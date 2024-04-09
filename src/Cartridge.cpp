@@ -9,6 +9,7 @@
 #pragma mark Cartridge
 Cartridge::Cartridge()
 : _type{kCartridgeTypeNone}, _subtype{0}
+, _storage{}
 {
   //
 }

@@ -5,15 +5,6 @@
 
 #include <stdio.h>
 
-#pragma mark CartridgeGBMBC1
-CartridgeGBMBC1::CartridgeGBMBC1(){
-  _subtype = kGBCartridgeTypeMBC1;
-}
-
-CartridgeGBMBC1::~CartridgeGBMBC1(){
-  //
-}
-
 #pragma mark public provider
 uint32_t CartridgeGBMBC1::readROM(void *buf_, uint32_t size, uint32_t offset){
   uint8_t *buf = (uint8_t*)buf_;

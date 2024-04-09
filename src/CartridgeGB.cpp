@@ -14,6 +14,7 @@ CartridgeGB::CartridgeGB(){
   _type = kCartridgeTypeGB;
   _subtype = kGBCartridgeTypeUnknown;
   gb_rw_init();
+  gb_read(0x140, _storage, sizeof(_storage));
 }
 
 CartridgeGB::~CartridgeGB(){
@@ -46,25 +47,30 @@ uint8_t CartridgeGB::getSubType(){
   readROM(&raw, 1, 0x147);
   switch (raw) {
       case 0x00:
-          return kGBCartridgeTypeRomOnly;
+          curtype = kGBCartridgeTypeRomOnly;
+          break;
 
       case 0x01:
       case 0x02:
       case 0x03:
-          return kGBCartridgeTypeMBC1;
+          curtype = kGBCartridgeTypeMBC1;
+          break;
 
       case 0x0F:
       case 0x10:
       case 0x11:
       case 0x12:
       case 0x13:
-          return kGBCartridgeTypeMBC3;
+          curtype = kGBCartridgeTypeMBC3;
+          break;
 
       case 0xFC:
-          return kGBCartridgeTypeCamera;
+          curtype = kGBCartridgeTypeCamera;
+          break;
 
       default:
           curtype = kGBCartridgeTypeUnknown;
+          break;
   }
 
   if (_subtype != curtype){
@@ -86,6 +92,8 @@ uint8_t CartridgeGB::getSubType(){
         break;
     }
   }
+
+  _subtype = curtype;
   return _subtype;
 
 error:
@@ -160,26 +168,19 @@ uint32_t CartridgeGB::writeRAM(const void *buf, uint32_t size, uint32_t offset){
 
 #pragma mark GB specifics
 uint8_t CartridgeGB::getGBTypeRaw(){
-  uint8_t ret = 0;
-  readROM(&ret, 1, 0x147);
-  return ret;
+  return _storage[0x7]; //0x147
 }
 
 uint8_t CartridgeGB::getROMRevision(){
-  uint8_t ret = 0;
-  readROM(&ret, 1, 0x14c);
-  return ret;
+  return _storage[0xc]; //0x14c
 }
 
 uint32_t CartridgeGB::getROMBankCount(){
-  uint8_t ret = 0;
-  readROM(&ret, 1, 0x148);
-  return 2 << ret;
+  return 2 << _storage[0x8]; //0x148
 }
 
 uint32_t CartridgeGB::getRAMBankCount(){
-  uint8_t val = 0;
-  readROM(&val, 1, 0x149);
+  uint8_t val = _storage[0x9]; //0x149
   switch (val) {
     case 0x00:
         return 0;

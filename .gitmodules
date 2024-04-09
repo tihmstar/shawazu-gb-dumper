@@ -1,0 +1,3 @@
+[submodule "extern/EmuFATFS"]
+	path = extern/EmuFATFS
+	url = https://github.com/tihmstar/EmuFATFS

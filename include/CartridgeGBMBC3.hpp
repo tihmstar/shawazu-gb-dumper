@@ -5,8 +5,7 @@
 
 class CartridgeGBMBC3 : public CartridgeGB {
 public:
-  CartridgeGBMBC3();
-  virtual ~CartridgeGBMBC3();
+  using CartridgeGB::CartridgeGB;
 
   virtual uint32_t readROM(void *buf, uint32_t size, uint32_t offset = 0) override;
   virtual uint32_t readRAM(void *buf, uint32_t size, uint32_t offset = 0) override;

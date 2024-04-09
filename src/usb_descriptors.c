@@ -80,8 +80,8 @@ uint8_t const desc_configuration[] =
 
   TUD_VENDOR_DESCRIPTOR(ITF_NUM_SHAWAZU, 0, EPNUM_SHAWAZU_OUT, EPNUM_SHAWAZU_IN, 64),
 
-  // // Interface number, string index, EP Out & EP In address, EP size
-  // TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 4 , EPNUM_MSC_OUT, EPNUM_MSC_IN, 64),
+  // Interface number, string index, EP Out & EP In address, EP size
+  TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 4 , EPNUM_MSC_OUT, EPNUM_MSC_IN, 64),
 };
 
 

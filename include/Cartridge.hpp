@@ -16,6 +16,7 @@ class Cartridge {
 protected:
   CartridgeType _type;
   uint8_t _subtype;
+  uint8_t _storage[0x10];
 
 private:
   virtual bool isConnected();

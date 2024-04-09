@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-const char *fakefiles_read_infotxt(Cartridge *cart, uint32_t *outSize);
+const char *fakefiles_read_infotxt(Cartridge *cart, size_t *outSize);
 
 int32_t fakefiles_read_rom(Cartridge *cart, uint32_t offset, void *buf, uint32_t bufSize);
 int32_t fakefiles_read_ram(Cartridge *cart, uint32_t offset, void *buf, uint32_t bufSize);
