@@ -56,6 +56,13 @@ error:
 }
 
 uint32_t CartridgeGBA::getROMSize(){
+  int err = 0;
+  uint32_t dummy = 0;
+
+  cassure(readROM(&dummy, sizeof(&dummy), 0x00800200) == sizeof(dummy));
+  if (dummy == 0x01000100) return 0x800000;
+
+error:
   return 0x1000000;
 }
 

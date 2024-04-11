@@ -71,10 +71,13 @@ void cdc_task(void) {
         while (len > 0){
           uint16_t curlen = len;
           if (curlen > sizeof(buf)) curlen = sizeof(buf);
-          curlen = gCart->read(buf, curlen, addr);
-          addr += curlen;
-          len -= curlen;
-          tud_cdc_write(buf,curlen);
+          uint16_t didread = gCart->read(buf, curlen, addr);
+          if (didread < curlen){
+            memset(&buf[didread], 0xFF, curlen - didread);
+          }
+          addr += didread;
+          len -= didread;
+          tud_cdc_write(buf,didread);
           tud_cdc_write_flush();
           tud_task();
         }

@@ -54,7 +54,7 @@ static inline void gba_read_program_init(PIO pio, uint sm, uint offset) {
   sm_config_set_sideset_pins(&c, 25);
   sm_config_set_sideset(&c, 3, true, false);
 
-  float freq = 80; //MHz
+  float freq = 70; //MHz
   float div = (float)clock_get_hz(clk_sys) / (freq * 1e6);
   sm_config_set_clkdiv(&c, div);
 
