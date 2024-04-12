@@ -71,11 +71,11 @@ uint32_t CartridgeGBA::getRAMSize(){
 }
 
 uint32_t CartridgeGBA::readROM(void *buf, uint32_t size, uint32_t offset){
-  return gba_read(offset>>1, buf, size);
+  return gba_read(offset, buf, size);
 }
 
 uint32_t CartridgeGBA::readRAM(void *buf, uint32_t size, uint32_t offset){
-  return 0;
+  return gba_read(0x1000000 + offset, buf, size);
 }
 
 uint32_t CartridgeGBA::writeRAM(const void *buf, uint32_t size, uint32_t offset){

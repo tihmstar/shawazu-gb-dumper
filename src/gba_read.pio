@@ -33,6 +33,7 @@ continue_read:
 #define PIN_A16                 16
 #define PIN_A23                 23
 
+#define PIN_CS2                 24
 #define PIN_CS                  25
 #define PIN_NRD                 26
 #define PIN_NWR                 27
@@ -61,11 +62,7 @@ static inline void gba_read_program_init(PIO pio, uint sm, uint offset) {
   sm_config_set_in_shift(&c, false, false, 24);
   sm_config_set_out_shift(&c, false, false, 16);
 
-  for (int i=0; i<24; i++){
-    pio_gpio_init(pio, i);
-  }
-
-  for (int i=25; i<29; i++){
+  for (int i=0; i<29; i++){
     pio_gpio_init(pio, i);
   }
 

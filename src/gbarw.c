@@ -2,6 +2,7 @@
 #include <hardware/timer.h>
 #include <hardware/clocks.h>
 #include <hardware/dma.h>
+#include <stdio.h>
 
 #include "gba_read.pio.h"
 // #include "gba_write.pio.h"
@@ -38,6 +39,10 @@ static int internal_init(bool isRead){
           gpio_init(PIN_NWR);
           gpio_set_dir(PIN_NWR, GPIO_OUT);
           gpio_put(PIN_NWR, 1);
+
+          gpio_init(PIN_CS2);
+          gpio_set_dir(PIN_CS2, GPIO_OUT);
+          gpio_put(PIN_CS2, 1);
       }else{
           // gba_write_program_init(GBARW_PIO, GBARW_SM, gWrite_pio_pc);        
       }
@@ -49,10 +54,7 @@ static int internal_init(bool isRead){
 #pragma mark public
 void gba_rw_init (void){
   dma_claim_mask(DMA_CHANNEL_MASK);
-  for (int i=0; i<24; i++){
-    gpio_set_function(i, GPIO_FUNC_PIO0);
-  }
-  for (int i=25; i<29; i++){
+  for (int i=0; i<29; i++){
     gpio_set_function(i, GPIO_FUNC_PIO0);
   }
 
@@ -114,23 +116,45 @@ int gba_read_internal(uint32_t addr, void *buf, uint32_t size, bool is8BitBus){
     pio_sm_get(GBARW_PIO, GBARW_SM);
 
   if (!is8BitBus){
+    /*
+      ROM mem access is 16bit data bus
+    */
     needsRawReads = size / 2;
     if (size & 1) needsRawReads++;
-    didRead += needsRawReads<<1;
+
+    if (addr & 1){
+      if ((size & 1) == 0) needsRawReads++;
+
+      pio_sm_put(GBARW_PIO, GBARW_SM, addr>>1);
+      pio_sm_put(GBARW_PIO, GBARW_SM, needsRawReads);
+
+      int v = popPicoSM();
+      if (v < 0) return v;
+      uint8_t *pv = (uint8_t*)&v;
+      *ptr++ = pv[1]; didRead++;
+
+    }else{
+      uint32_t needsRead = (size & ~1);
+
+      if (needsRead > 3){
+        internal_pio_read_dma(ptr, needsRead, is8BitBus);
+        ptr += needsRead;
+        didRead += needsRead;
+      }
+
+      pio_sm_put(GBARW_PIO, GBARW_SM, addr>>1);
+      pio_sm_put(GBARW_PIO, GBARW_SM, needsRawReads);
+    }
+    
+    if (didRead > 3){
+      dma_channel_wait_for_finish_blocking(DMA_CHANNEL);
+    }
+
   }else{
+    //TODO
     needsRawReads = size;
-    didRead = size;
-  }
-
-  if (didRead){
-    internal_pio_read_dma(buf, didRead, is8BitBus);  
-  }
-
-  pio_sm_put(GBARW_PIO, GBARW_SM, addr);
-  pio_sm_put(GBARW_PIO, GBARW_SM, needsRawReads);
-
-  if (didRead){
-    dma_channel_wait_for_finish_blocking(DMA_CHANNEL);
+    pio_sm_put(GBARW_PIO, GBARW_SM, addr);
+    pio_sm_put(GBARW_PIO, GBARW_SM, needsRawReads);
   }
 
   while (didRead < size){
@@ -147,5 +171,5 @@ int gba_read_internal(uint32_t addr, void *buf, uint32_t size, bool is8BitBus){
 }
 
 int gba_read(uint32_t addr, void *buf, uint32_t size){
-  return gba_read_internal(addr, buf, size, false);
+  return gba_read_internal(addr & 0xFFFFFF, buf, size, addr >= 0x1000000);
 }
