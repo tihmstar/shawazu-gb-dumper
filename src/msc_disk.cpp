@@ -34,12 +34,30 @@ int32_t cb_read_rom(uint32_t offset, void *buf, uint32_t size, const char *filen
   return gCart->readROM(buf, size, offset);
 }
 
+static uint8_t gRTCmem[0x10] = {};
+
 int32_t cb_read_ram(uint32_t offset, void *buf, uint32_t size, const char *filename){
-  return gCart->readRAM(buf, size, offset);
+  uint32_t didRead = gCart->readRAM(buf, size, offset);
+  if (offset + didRead == gCart->getRAMSize()){
+    uint8_t *ptr = (uint8_t *)buf;
+    uint32_t remainingSize = size-didRead;
+    if (remainingSize > sizeof(gRTCmem)) remainingSize = sizeof(gRTCmem);
+    memcpy(&ptr[didRead], gRTCmem, remainingSize);
+    didRead += remainingSize;
+  } 
+  return didRead;
 }
 
 int32_t cb_write_ram(uint32_t offset, const void *buf, uint32_t size, const char *filename){
-  return gCart->writeRAM(buf, size, offset);
+  uint32_t didWrite = gCart->writeRAM(buf, size, offset);
+  if (offset + didWrite == gCart->getRAMSize()){
+    const uint8_t *ptr = (const uint8_t *)buf;
+    uint32_t remainingSize = size-didWrite;
+    if (remainingSize > sizeof(gRTCmem)) remainingSize = sizeof(gRTCmem);
+    memcpy(gRTCmem, &ptr[didWrite], remainingSize);
+    didWrite += remainingSize;
+  } 
+  return didWrite;
 }
 
 int32_t cb_read_cam_image(uint32_t offset, void *buf, uint32_t size, const char *filename){
@@ -82,7 +100,7 @@ void init_fakefatfs(void){
     snprintf(romname, sizeof(romname), "%s%s",title, isColor ? " (Color)" : "");
     gEmuFat.addFile(romname,suffix, gCart->getROMSize(), cb_read_rom);
     if (uint32_t ramsize = gCart->getRAMSize()){
-      gEmuFat.addFile(romname, "sav", ramsize + 8, cb_read_ram, cb_write_ram);
+      gEmuFat.addFile(romname, "sav", ramsize + sizeof(gRTCmem), cb_read_ram, cb_write_ram);
     }
   }
 
