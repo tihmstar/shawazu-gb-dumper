@@ -25,6 +25,7 @@ add_executable(${PROJECT_NAME}
     src/Cartridge.cpp
     src/CartridgeGB.cpp
     src/CartridgeGBA.cpp
+    src/CartridgeGBASaveFlash.cpp
     src/CartridgeGBMBC1.cpp
     src/CartridgeGBMBC3.cpp
     src/EmuFATFS.cpp

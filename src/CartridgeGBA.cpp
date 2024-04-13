@@ -1,22 +1,15 @@
 
 #include "CartridgeGBA.hpp"
+#include "CartridgeGBASaveFlash.hpp"
 #include "gbarw.h"
 #include "all.h"
 
+#include <new>
 #include <stdio.h>
+#include <string.h>
 #include <hardware/timer.h>
 #include <hardware/clocks.h>
 
-#define FLAH_CMD_CHIPD_MODE_ENTER   0x90
-#define FLAH_CMD_CHIPD_MODE_EXIT    0xF0
-
-#define FLAH_CMD_ERASE_PREPARE      0x80
-#define FLAH_CMD_ERASE_FULL_CHIP    0x10
-#define FLAH_CMD_ERASE_4KIB_SECTOR  0x30
-
-#define FLAH_CMD_WRITE_PREPARE      0xA0
-
-#define FLAH_CMD_SET_BANK           0xB0
 
 #pragma mark CartridgeGBA
 CartridgeGBA::CartridgeGBA(){
@@ -50,6 +43,77 @@ error:
 }
 
 #pragma mark public provider
+uint8_t CartridgeGBA::getSubType(){
+  int err = 0;
+  uint8_t curtype = kGBACartridgeTypeUnknown;
+  char storageString[0x10] = {};
+
+  {
+    char buf[0x1000] = {};
+    for (int i = 0; i < getROMSize(); i+=sizeof(buf)){
+      cassure(readROM(buf, sizeof(buf), i) == sizeof(buf));
+      for (int z = 0; z<sizeof(buf); z+=4){
+        uint32_t offset = 0;
+        uint32_t v = *((uint32_t*)&buf[z]);
+        switch (v){
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmultichar"
+          case 'RPEE': //EEPROM
+          case 'MARS': //SRAM
+          case 'SALF': //FLASH
+#pragma GCC diagnostic pop
+          {
+            cassure(readROM(storageString, sizeof(storageString), i+z) == sizeof(storageString));
+            if (strncmp(storageString, "EEPROM_V", sizeof("EEPROM_V")-1) == 0){
+              curtype = kGBACartridgeTypeSaveEEPROM;
+              _storage[sizeof("EEPROM_V")+3] = 0;
+              goto type_search_end;
+            } else if (strncmp(storageString, "SRAM_V", sizeof("SRAM_V")-1) == 0){
+              curtype = kGBACartridgeTypeSaveSRAM;
+              _storage[sizeof("SRAM_V")+3] = 0;
+              goto type_search_end;
+            } else if (strncmp(storageString, "FLASH_V", sizeof("FLASH_V")-1) == 0){
+              curtype = kGBACartridgeTypeSaveFlash;
+              _storage[sizeof("FLASH_V")+3] = 0;
+              goto type_search_end;
+            } else if (strncmp(storageString, "FLASH512_V", sizeof("FLASH512_V")-1) == 0){
+              curtype = kGBACartridgeTypeSaveFlash;
+              _storage[sizeof("FLASH512_V")+3] = 0;
+              goto type_search_end;
+            } else if (strncmp(storageString, "FLASH1M_V", sizeof("FLASH1M_V")-1) == 0){
+              curtype = kGBACartridgeTypeSaveFlashExtended;
+              _storage[sizeof("FLASH1M_V")+3] = 0;
+              goto type_search_end;
+            } 
+          }
+          break;
+        default:
+          break;
+        }
+      }
+    }
+    type_search_end:;
+  }
+  
+  if (_subtype != curtype){
+    switch (curtype){
+      case kGBACartridgeTypeSaveFlash:
+        this->~Cartridge();
+        new(this) CartridgeGBASaveFlash;
+        break;
+
+      case kGBACartridgeTypeUnknown:
+      default:
+        break;
+    }
+  }
+
+error:
+  _subtype = curtype;
+  memcpy(_storage, storageString, MIN(sizeof(_storage),sizeof(storageString)));
+  return _subtype;
+}
+
 size_t CartridgeGBA::readTitle(char *buf, size_t bufSize, bool *isColor){
   int err = 0;
   size_t ret = 0;
@@ -95,36 +159,8 @@ uint32_t CartridgeGBA::writeRAM(const void *buf, uint32_t size, uint32_t offset)
   return gba_write(GBA_SAVEGAME_MAP_ADDRESS + offset, buf, size);
 }
 
-#pragma mark GBA specifics private
-void CartridgeGBA::flashSendCmd(uint8_t cmd){
-  gba_write_byte(GBA_SAVEGAME_MAP_ADDRESS + 0x5555, 0xAA);
-  gba_write_byte(GBA_SAVEGAME_MAP_ADDRESS + 0x2aaa, 0x55);
-  gba_write_byte(GBA_SAVEGAME_MAP_ADDRESS + 0x5555, cmd);
-}
-
-#pragma mark GBA specifics public
-uint16_t CartridgeGBA::flashReadVIDandPID(){
-  uint16_t ret = 0;
-  flashSendCmd(FLAH_CMD_CHIPD_MODE_ENTER);
-  gba_read(GBA_SAVEGAME_MAP_ADDRESS + 0x00, &ret, 2);
-  flashSendCmd(FLAH_CMD_CHIPD_MODE_EXIT);
-  return ret;
-}
-
-void CartridgeGBA::flashWriteByte(uint16_t offset, uint8_t data){
-  flashSendCmd(FLAH_CMD_WRITE_PREPARE);
-  gba_write_byte(GBA_SAVEGAME_MAP_ADDRESS + offset, data);
-}
-
-int CartridgeGBA::flashEraseSector(uint16_t sectorAddress){
-  sectorAddress &= 0xf000;
-  flashSendCmd(FLAH_CMD_ERASE_PREPARE);
-  gba_write_byte(GBA_SAVEGAME_MAP_ADDRESS + 0x5555, 0xAA);
-  gba_write_byte(GBA_SAVEGAME_MAP_ADDRESS + 0x2aaa, 0x55);
-  gba_write_byte(GBA_SAVEGAME_MAP_ADDRESS + sectorAddress, FLAH_CMD_ERASE_4KIB_SECTOR);
-  uint64_t time = time_us_64();
-  while (time_us_64() - time < 100*USEC_PER_MSEC){
-    if (gba_read_byte(GBA_SAVEGAME_MAP_ADDRESS + sectorAddress) == 0xff) return 0;
-  }
-  return -1;
+#pragma mark GB specifics
+const char *CartridgeGBA::getStorageType(){
+  if (_subtype == kGBACartridgeTypeUnknown) return "Unknown";
+  return (char*)_storage;
 }

@@ -31,7 +31,10 @@ CartridgeType Cartridge::getType(){
   */
   this->~Cartridge();
   new(this) CartridgeGBA;
-  if (isConnected()) return _type;
+  if (isConnected()){
+    getSubType(); //morph to correct object!
+    return _type;
+  }
 
   /*
     Check GB

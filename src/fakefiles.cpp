@@ -3,6 +3,8 @@
 
 #include "Cartridge.hpp"
 #include "CartridgeGB.hpp"
+#include "CartridgeGBA.hpp"
+#include "CartridgeGBASaveFlash.hpp"
 #include <stdio.h>
 #include <string.h>
 
@@ -71,22 +73,46 @@ const char *fakefiles_read_infotxt(Cartridge *cart, size_t *outSize){
           case 0xFC: cartType = "POCKET CAMERA"; break;
           default: break;
         }
+        bufcontent += snprintf(buf+bufcontent, sizeof(buf)-bufcontent-1, "Cartridge Type: %s(%d)\n", cartType, cartTypeVal);
       }
       break;
 
       case kCartridgeTypeGBA:
       {
-        cartType = "GBA";
+        CartridgeGBA *gbacart = (CartridgeGBA*)cart;
+        cartType = gbacart->getStorageType();
+        bufcontent += snprintf(buf+bufcontent, sizeof(buf)-bufcontent-1, "Cartridge Type: GBA (%s)\n", cartType);
+        switch (gbacart->getSubType()){
+        case kGBACartridgeTypeSaveFlash:
+        case kGBACartridgeTypeSaveFlashExtended:
+          {
+            CartridgeGBASaveFlash *flashgbacart = (CartridgeGBASaveFlash*)gbacart;
+            uint16_t vidpid = flashgbacart->flashReadVIDandPID();
+            const char *vidstr = "Unknown";
+            switch (vidpid & 0xff){
+              case 0x1F: vidstr = "Atmel"; break;
+              case 0x32: vidstr = "Panasonic"; break;
+              case 0x62: vidstr = "Sanyo"; break;
+              case 0xC2: vidstr = "Macronix"; break;
+              case 0xBF: vidstr = "Sanyo or SST"; break;
+              default: break;
+            }
+            bufcontent += snprintf(buf+bufcontent, sizeof(buf)-bufcontent-1, "Flash VID: 0x%02x (%s)\n", (vidpid & 0xff),vidstr);
+            bufcontent += snprintf(buf+bufcontent, sizeof(buf)-bufcontent-1, "Flash PID: 0x%02x\n", (vidpid >> 8));
+          }
+          break;
+        default:
+          break;
+        }
       }
       break;
 
       default:
       {
-        cartType = "ERROR";
+        bufcontent += snprintf(buf+bufcontent, sizeof(buf)-bufcontent-1, "Cartridge Type: ERROR\n");
       }
       break;
     }
-    bufcontent += snprintf(buf+bufcontent, sizeof(buf)-bufcontent-1, "Cartridge Type: %s(%d)\n", cartType, cartTypeVal);
   }
 
   if (outSize) *outSize = bufcontent;
