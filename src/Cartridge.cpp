@@ -91,3 +91,7 @@ uint32_t Cartridge::readRAM(void *buf, uint32_t size, uint32_t offset){
 uint32_t Cartridge::writeRAM(const void *buf, uint32_t size, uint32_t offset){
   return 0;
 }
+
+int Cartridge::eraseRAM(){
+  return -99;
+}

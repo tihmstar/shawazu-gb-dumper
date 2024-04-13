@@ -48,13 +48,28 @@ uint32_t CartridgeGBASaveFlash::writeRAM(const void *buf, uint32_t size, uint32_
   // }
   if ((offset & 0xfff) == 0){
     while (size - didWriteBytes >= 0x1000){
-      flashEraseSector(offset);
+      bool needsSectorErase = false;
+      {
+        uint8_t sector[0x1000] = {};
+        readRAM(sector, sizeof(sector), offset);
+        for (int i = 0; i < sizeof(sector); i++){
+          if (sector[i] & ptr[i] < ptr[i]){
+            needsSectorErase = true;
+            break;
+          }
+        }
+      }
+      if (needsSectorErase) flashEraseSector(offset);
       for (size_t i = 0; i < 0x1000; i++){
         flashWriteByte(offset++,*ptr++);didWriteBytes++;
       }
     }
   }
   return didWriteBytes;
+}
+
+int CartridgeGBASaveFlash::eraseRAM(){
+  return flashEraseFullChip();
 }
 
 #pragma mark GBA specifics public
@@ -85,6 +100,16 @@ int CartridgeGBASaveFlash::flashEraseSector(uint16_t sectorAddress){
   uint64_t time = time_us_64();
   while (time_us_64() - time < 100*USEC_PER_MSEC){
     if (gba_read_byte(GBA_SAVEGAME_MAP_ADDRESS + sectorAddress) == 0xff) return 0;
+  }
+  return -1;
+}
+
+int CartridgeGBASaveFlash::flashEraseFullChip(){
+  flashSendCmd(FLAH_CMD_ERASE_PREPARE);
+  flashSendCmd(FLAH_CMD_ERASE_FULL_CHIP);
+  uint64_t time = time_us_64();
+  while (time_us_64() - time < 300*USEC_PER_MSEC){
+    if (gba_read_byte(GBA_SAVEGAME_MAP_ADDRESS + 0) == 0xff) return 0;
   }
   return -1;
 }
