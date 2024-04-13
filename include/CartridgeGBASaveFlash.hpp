@@ -8,6 +8,7 @@
 class CartridgeGBASaveFlash : public  CartridgeGBA{
 #pragma mark GBA specifics
   void flashSendCmd(uint8_t cmd);
+  uint32_t writeRAMBank(const void *buf, uint32_t size, uint16_t offset = 0);
 public:
   using CartridgeGBA::CartridgeGBA;
 

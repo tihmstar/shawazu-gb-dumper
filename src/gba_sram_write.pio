@@ -35,7 +35,7 @@ static inline void gba_sram_write_program_init(PIO pio, uint sm, uint offset) {
   pio_sm_set_consecutive_pindirs(pio, sm, PIN_CS2, 5, true); //cfg is out
   sm_config_set_set_pins(&c, PIN_CS2, 5 );
 
-  float freq = 20000000; //10MHz
+  float freq = 10000000; //10MHz
   float div = (float)clock_get_hz(clk_sys) / freq;
   sm_config_set_clkdiv(&c, div);
 

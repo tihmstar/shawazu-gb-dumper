@@ -82,7 +82,7 @@ void init_fakefatfs(void){
     snprintf(romname, sizeof(romname), "%s%s",title, isColor ? " (Color)" : "");
     gEmuFat.addFile(romname,suffix, gCart->getROMSize(), cb_read_rom);
     if (uint32_t ramsize = gCart->getRAMSize()){
-      gEmuFat.addFile(romname, "sav", ramsize, cb_read_ram, cb_write_ram);
+      gEmuFat.addFile(romname, "sav", ramsize + 8, cb_read_ram, cb_write_ram);
     }
   }
 

@@ -98,6 +98,7 @@ uint8_t CartridgeGBA::getSubType(){
   if (_subtype != curtype){
     switch (curtype){
       case kGBACartridgeTypeSaveFlash:
+      case kGBACartridgeTypeSaveFlashExtended:
         this->~Cartridge();
         new(this) CartridgeGBASaveFlash;
         break;
