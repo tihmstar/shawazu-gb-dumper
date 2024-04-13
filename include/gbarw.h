@@ -7,14 +7,16 @@
 extern "C" {
 #endif
 
+#define GBA_SAVEGAME_MAP_ADDRESS 0x1000000
+
 void gba_rw_init (void);
 void gba_rw_cleanup(void);
 
-int gba_read_word (uint32_t addr);
-int gba_write_word(uint32_t addr, uint16_t data);
+int gba_read (uint32_t addr, void *buf, uint32_t size);
+int gba_write(uint32_t addr, const void *buf, uint32_t size);
 
-int gba_read (uint32_t addr, void *buf, int size);
-int gba_write(uint32_t addr, const void *buf, int size);
+int gba_read_byte(uint32_t addr);
+int gba_write_byte(uint32_t addr, uint8_t data);
 
 #ifdef __cplusplus
 }

@@ -32,7 +32,10 @@
       "algorithm": "c",
       "gb_write.pio.h": "c",
       "gb_read.pio.h": "c",
-      "cstdint": "cpp"
+      "cstdint": "cpp",
+      "gba_read.pio.h": "c",
+      "gba_sram_read.pio.h": "c",
+      "gba_sram_write.pio.h": "c"
     },
     "cmake.configureOnOpen": true,
 }

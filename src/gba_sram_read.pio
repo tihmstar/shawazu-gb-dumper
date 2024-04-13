@@ -1,0 +1,54 @@
+; Program name
+.program gba_sram_read
+  
+ set PINS, 0b111 [6] 
+
+.wrap_target
+  pull
+  out NULL, 16
+  out PINS, 16
+  set PINS, 0b010 [8] ;lock high (2 insn left)
+  in PINS, 8
+  set PINS, 0b111 
+  push [6]
+.wrap
+
+% c-sdk {
+#define PIN_A0                   0
+#define PIN_A15                 15
+#define PIN_D0                  16
+#define PIN_D7                  23
+
+#define PIN_CS2                 24
+#define PIN_CS                  25
+#define PIN_NRD                 26
+
+#define PIN_NWR                 27
+#define PIN_CLK                 28
+
+
+static inline void gba_sram_read_program_init(PIO pio, uint sm, uint offset) {
+  pio_sm_config c = gba_sram_read_program_get_default_config(offset);
+
+  pio_sm_set_consecutive_pindirs(pio, sm, PIN_A0, 16, true);  //address is out
+  sm_config_set_out_pins(&c, PIN_A0, 16);
+
+  pio_sm_set_consecutive_pindirs(pio, sm, PIN_D0, 8, false); //data is in
+  sm_config_set_in_pins(&c, PIN_D0);
+
+  pio_sm_set_consecutive_pindirs(pio, sm, PIN_CS2, 3, true); //cfg is out
+  sm_config_set_set_pins(&c, PIN_CS2, 3 );
+
+  float freq = 10000000; //10MHz
+  float div = (float)clock_get_hz(clk_sys) / freq;
+  sm_config_set_clkdiv(&c, div);
+
+  sm_config_set_in_shift(&c, false, false, 16);
+  sm_config_set_out_shift(&c, false, false, 8);
+
+  for (int i=0; i<29; i++){
+    pio_gpio_init(pio, i);
+  }
+  pio_sm_init(pio, sm, offset, &c);
+}
+%}

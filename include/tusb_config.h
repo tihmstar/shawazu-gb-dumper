@@ -110,7 +110,7 @@
 #define CFG_TUD_VENDOR_RX_BUFSIZE 0x800
 #define CFG_TUD_VENDOR_TX_BUFSIZE 0x800
 
-#define CFG_TUD_MSC_EP_BUFSIZE   512
+#define CFG_TUD_MSC_EP_BUFSIZE    4096
 
 #ifdef __cplusplus
  }
