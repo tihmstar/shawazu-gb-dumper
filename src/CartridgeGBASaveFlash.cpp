@@ -6,6 +6,7 @@
 #include <hardware/timer.h>
 #include <hardware/clocks.h>
 #include <hardware/sync.h>
+#include <tusb.h>
 #include <stdio.h>
 
 #define FLAH_CMD_CHIPD_MODE_ENTER   0x90
@@ -44,7 +45,8 @@ uint32_t CartridgeGBASaveFlash::readRAM(void *buf, uint32_t size, uint32_t offse
       gba_write_byte(GBA_SAVEGAME_MAP_ADDRESS + 0, 0);
       uint32_t needsRead = 0x10000 - offset;
       if (needsRead > size) needsRead = size;
-      uint32_t actuallyRead = gba_read(GBA_SAVEGAME_MAP_ADDRESS + offset, ptr, needsRead);
+      uint32_t actuallyRead = CartridgeGBA::readRAM(ptr, needsRead, offset);
+      if (actuallyRead != needsRead) return actuallyRead;
       didRead += actuallyRead;
       offset += actuallyRead;
       ptr += actuallyRead;
@@ -56,13 +58,14 @@ uint32_t CartridgeGBASaveFlash::readRAM(void *buf, uint32_t size, uint32_t offse
       gba_write_byte(GBA_SAVEGAME_MAP_ADDRESS + 0, 1);
       uint32_t needsRead = 0x20000 - offset;
       if (needsRead > size) needsRead = size;
-      uint32_t actuallyRead = gba_read(GBA_SAVEGAME_MAP_ADDRESS + offset, ptr, needsRead);
+      uint32_t actuallyRead = CartridgeGBA::readRAM(ptr, needsRead, offset);
+      if (actuallyRead != needsRead) return actuallyRead;
       didRead += actuallyRead;
     }
     
     return didRead;
   }else{
-    return gba_read(GBA_SAVEGAME_MAP_ADDRESS + offset, buf, size);
+    return CartridgeGBA::readRAM(buf, size, offset);
   }
 }
 
@@ -74,18 +77,22 @@ uint32_t CartridgeGBASaveFlash::writeRAMBank(const void *buf, uint32_t size, uin
       bool needsSectorErase = false;
       uint8_t sector[0x1000] = {};
       uint32_t didRead = gba_read(GBA_SAVEGAME_MAP_ADDRESS + offset, sector, sizeof(sector));
+      tud_task();
       for (int i = 0; i < sizeof(sector); i++){
         if ((sector[i] & ptr[i]) < ptr[i]){
           needsSectorErase = true;
           break;
         }
       }
-      if (needsSectorErase || didRead != sizeof(sector))
+      if (needsSectorErase || didRead != sizeof(sector)){
         flashEraseSector(offset);
+      }
       for (size_t i = 0; i < 0x1000; i++){
         if (flashWriteByte(offset,*ptr) < 0){
           if (flashWriteByte(offset,*ptr) < 0){
-            return didWriteBytes;
+            if (flashWriteByte(offset,*ptr) < 0){
+              return didWriteBytes;
+            }
           }
         }
         offset++;
@@ -102,13 +109,11 @@ uint32_t CartridgeGBASaveFlash::writeRAM(const void *buf, uint32_t size, uint32_
     const uint8_t *ptr = (const uint8_t*)buf;
     uint32_t didWrite = 0;
     if (offset < 0x10000){
-      uint32_t interrupts = save_and_disable_interrupts();
       flashSendCmd(FLAH_CMD_SET_BANK);
       gba_write_byte(GBA_SAVEGAME_MAP_ADDRESS + 0, 0);
       uint32_t needsWrite = 0x10000 - offset;
       if (needsWrite > size) needsWrite = size;
       uint32_t actuallyWritten = writeRAMBank(ptr, needsWrite, offset);
-      restore_interrupts(interrupts);
       didWrite += actuallyWritten;
       offset += actuallyWritten;
       ptr += actuallyWritten;
@@ -116,21 +121,17 @@ uint32_t CartridgeGBASaveFlash::writeRAM(const void *buf, uint32_t size, uint32_
     }
 
     if (offset >= 0x10000 && offset < 0x20000 && size){
-      uint32_t interrupts = save_and_disable_interrupts();
       flashSendCmd(FLAH_CMD_SET_BANK);
       gba_write_byte(GBA_SAVEGAME_MAP_ADDRESS + 0, 1);
       uint32_t needsWrite = 0x20000 - offset;
       if (needsWrite > size) needsWrite = size;
       uint32_t actuallyWritten = writeRAMBank(ptr, needsWrite, offset);
-      restore_interrupts(interrupts);
       didWrite += actuallyWritten;
     }
     
     return didWrite;
   }else{
-    uint32_t interrupts = save_and_disable_interrupts();
     uint32_t didWrite = writeRAMBank(buf, size, offset);
-    restore_interrupts(interrupts);
     return didWrite;
   }
 }
@@ -152,8 +153,9 @@ int CartridgeGBASaveFlash::flashWriteByte(uint16_t offset, uint8_t data){
   flashSendCmd(FLAH_CMD_WRITE_PREPARE);
   gba_write_byte(GBA_SAVEGAME_MAP_ADDRESS + offset, data);
   uint64_t time = time_us_64();
-  while (time_us_64() - time < 10*USEC_PER_MSEC){
+  while (time_us_64() - time < 100*USEC_PER_MSEC){
     if (gba_read_byte(GBA_SAVEGAME_MAP_ADDRESS + offset) == data) return 0;
+    tud_task();
   }
   return -1;
 }
@@ -165,8 +167,9 @@ int CartridgeGBASaveFlash::flashEraseSector(uint16_t sectorAddress){
   gba_write_byte(GBA_SAVEGAME_MAP_ADDRESS + 0x2aaa, 0x55);
   gba_write_byte(GBA_SAVEGAME_MAP_ADDRESS + sectorAddress, FLAH_CMD_ERASE_4KIB_SECTOR);
   uint64_t time = time_us_64();
-  while (time_us_64() - time < 100*USEC_PER_MSEC){
+  while (time_us_64() - time < 300*USEC_PER_MSEC){
     if (gba_read_byte(GBA_SAVEGAME_MAP_ADDRESS + sectorAddress) == 0xff) return 0;
+    tud_task();
   }
   return -1;
 }
@@ -175,8 +178,9 @@ int CartridgeGBASaveFlash::flashEraseFullChip(){
   flashSendCmd(FLAH_CMD_ERASE_PREPARE);
   flashSendCmd(FLAH_CMD_ERASE_FULL_CHIP);
   uint64_t time = time_us_64();
-  while (time_us_64() - time < 300*USEC_PER_MSEC){
+  while (time_us_64() - time < 400*USEC_PER_MSEC){
     if (gba_read_byte(GBA_SAVEGAME_MAP_ADDRESS + 0) == 0xff) return 0;
+    tud_task();
   }
   return -1;
 }

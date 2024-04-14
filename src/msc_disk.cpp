@@ -8,6 +8,7 @@
 #include "Cartridge.hpp"
 #include "CartridgeGB.hpp"
 #include "EmuFATFS.hpp"
+#include <hardware/watchdog.h>
 
 extern Cartridge *gCart;
 
@@ -16,7 +17,8 @@ static tihmstar::EmuFATFS<35,0x400> gEmuFat("SHAWAZU");
 // whether host does safe-eject
 static bool ejected = false;
 static bool fatIsInited = false;
-
+static bool gSaveRamWasDeleted = false;
+static int gIsIOInProgress = 0;
 
 int32_t cb_read_info(uint32_t offset, void *buf, uint32_t size, const char *filename){
   size_t infoSize = 0;
@@ -37,6 +39,7 @@ int32_t cb_read_rom(uint32_t offset, void *buf, uint32_t size, const char *filen
 static uint8_t gRTCmem[0x10] = {};
 
 int32_t cb_read_ram(uint32_t offset, void *buf, uint32_t size, const char *filename){
+  gSaveRamWasDeleted = false;
   uint32_t didRead = gCart->readRAM(buf, size, offset);
   if (offset + didRead == gCart->getRAMSize()){
     uint8_t *ptr = (uint8_t *)buf;
@@ -49,15 +52,24 @@ int32_t cb_read_ram(uint32_t offset, void *buf, uint32_t size, const char *filen
 }
 
 int32_t cb_write_ram(uint32_t offset, const void *buf, uint32_t size, const char *filename){
-  uint32_t didWrite = gCart->writeRAM(buf, size, offset);
-  if (offset + didWrite == gCart->getRAMSize()){
-    const uint8_t *ptr = (const uint8_t *)buf;
-    uint32_t remainingSize = size-didWrite;
-    if (remainingSize > sizeof(gRTCmem)) remainingSize = sizeof(gRTCmem);
-    memcpy(gRTCmem, &ptr[didWrite], remainingSize);
-    didWrite += remainingSize;
-  } 
-  return didWrite;
+  if (buf == NULL && size == 0){
+    /*
+      File was deleted
+    */
+    gSaveRamWasDeleted = true;
+    return 0;
+  }else{
+    gSaveRamWasDeleted = false;
+    uint32_t didWrite = gCart->writeRAM(buf, size, offset);
+    if (offset + didWrite == gCart->getRAMSize()){
+      const uint8_t *ptr = (const uint8_t *)buf;
+      uint32_t remainingSize = size-didWrite;
+      if (remainingSize > sizeof(gRTCmem)) remainingSize = sizeof(gRTCmem);
+      memcpy(gRTCmem, &ptr[didWrite], remainingSize);
+      didWrite += remainingSize;
+    } 
+    return didWrite;
+  }
 }
 
 int32_t cb_read_cam_image(uint32_t offset, void *buf, uint32_t size, const char *filename){
@@ -125,6 +137,7 @@ void init_fakefatfs(void){
     }
   }
   fatIsInited = true;
+  gSaveRamWasDeleted = false;
 }
 
 // Invoked when received SCSI_CMD_INQUIRY
@@ -146,23 +159,35 @@ void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16
 bool tud_msc_test_unit_ready_cb(uint8_t lun){
   (void) lun;
 
-
-  if (gCart->getType() == kCartridgeTypeNone){
-    fatIsInited = false;
-
-  } else{
-    if (!fatIsInited){
-      init_fakefatfs();
-    }
-  }
-
   // RAM disk is ready until ejected
   if (ejected) {
+
+    if (gSaveRamWasDeleted){
+      gSaveRamWasDeleted = false;
+      gCart->eraseRAM();
+      watchdog_reboot(0,0,0);
+    }
+
     // Additional Sense 3A-00 is NOT_FOUND
     tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3a, 0x00);
     return false;
   }
 
+  if (!gIsIOInProgress){
+    gIsIOInProgress++;
+
+    if (gCart->getType() == kCartridgeTypeNone){
+      fatIsInited = false;
+
+    } else{
+      if (!fatIsInited){
+        init_fakefatfs();
+      }
+    }
+
+    gIsIOInProgress--;
+  }
+  
   return fatIsInited;
 }
 
@@ -202,9 +227,16 @@ bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, boo
 // Callback invoked when received READ10 command.
 // Copy disk's data to buffer (up to bufsize) and return number of copied bytes.
 int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buffer, uint32_t bufsize){
-  int32_t didread =  gEmuFat.hostRead(offset + lba * gEmuFat.diskBlockSize(), buffer, bufsize);
+  (void) lun;
 
-  return didread;
+  int32_t didread = 0;
+  if (!gIsIOInProgress){
+    gIsIOInProgress++;
+    didread =  gEmuFat.hostRead(offset + lba * gEmuFat.diskBlockSize(), buffer, bufsize);
+    gIsIOInProgress--;
+  }
+
+  return didread & ~(gEmuFat.diskBlockSize()-1);
 }
 
 bool tud_msc_is_writable_cb (uint8_t lun) {
@@ -217,7 +249,14 @@ bool tud_msc_is_writable_cb (uint8_t lun) {
 int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* buffer, uint32_t bufsize){
   (void) lun;
 
-  return gEmuFat.hostWrite(offset + lba * gEmuFat.diskBlockSize(), buffer, bufsize);
+  int32_t didWrite = 0;
+  if (!gIsIOInProgress){
+    gIsIOInProgress++;
+    didWrite = gEmuFat.hostWrite(offset + lba * gEmuFat.diskBlockSize(), buffer, bufsize);
+    gIsIOInProgress--;
+  }
+
+  return didWrite & ~(gEmuFat.diskBlockSize()-1);
 }
 
 // Callback invoked when received an SCSI command not in built-in list below

@@ -153,6 +153,9 @@ uint32_t CartridgeGBA::readROM(void *buf, uint32_t size, uint32_t offset){
 }
 
 uint32_t CartridgeGBA::readRAM(void *buf, uint32_t size, uint32_t offset){
+  uint32_t ramSize = getRAMSize();
+  if (offset >= ramSize) return 0;
+  if (size > ramSize - offset) size = ramSize - offset;  
   return gba_read(GBA_SAVEGAME_MAP_ADDRESS + offset, buf, size);
 }
 
