@@ -2,6 +2,7 @@
 #include <hardware/timer.h>
 #include <hardware/clocks.h>
 
+#include "all.h"
 #include "gb_read.pio.h"
 #include "gb_write.pio.h"
 
@@ -10,7 +11,14 @@
 
 #define GBRW_PIO       pio0
 #define GBRW_SM        0
+
+#ifdef REV2_LAYOUT
 #define PIN_CS         25
+#else
+#define PIN_CS         28
+#endif
+
+#define PIN_RST        24
 
 
 #define MODE_READ 1
@@ -43,16 +51,19 @@ static int internal_init(bool isRead){
 
 #pragma mark public
 void gb_rw_init (void){
-  for (int i=0; i<23; i++){
-    gpio_set_function(i, GPIO_FUNC_PIO0);
-  }
-  gpio_set_function(PIN_D7, GPIO_FUNC_PIO0);
-  gpio_set_function(PIN_NRD, GPIO_FUNC_PIO0);
-  gpio_set_function(PIN_CLK, GPIO_FUNC_PIO0);
-  gpio_set_function(PIN_NWR, GPIO_FUNC_PIO0);
-
   gpio_init(PIN_CS);
   gpio_set_dir(PIN_CS, GPIO_OUT);
+  gpio_put(PIN_CS, 1);
+
+  gpio_init(PIN_RST);
+  gpio_set_dir(PIN_RST, GPIO_OUT);
+  gpio_put(PIN_RST, 1);
+
+  for (int i=0; i<29; i++){
+    if (i == PIN_CS) continue;
+    if (i == PIN_RST) continue;
+    gpio_set_function(i, GPIO_FUNC_PIO0);
+  }
 
   gRead_pio_pc = pio_add_program(GBRW_PIO, &gb_read_program);
   gWrite_pio_pc = pio_add_program(GBRW_PIO, &gb_write_program);
@@ -73,12 +84,13 @@ void gb_rw_cleanup(void){
 }
 
 int gb_read_byte (uint16_t addr){
-  if (addr >= 0xA000) gpio_put(PIN_CS, 0);
-  else gpio_put(PIN_CS, 1);
-
   int err = 0;
   err = internal_init(true);
   if (err) return err;
+
+  if (addr >= 0xA000) gpio_put(PIN_CS, 0);
+  else gpio_put(PIN_CS, 1);
+
   pio_sm_put(GBRW_PIO, GBRW_SM, addr);
   uint64_t time = time_us_64();
   while (pio_sm_is_rx_fifo_empty(GBRW_PIO, GBRW_SM)){
@@ -90,12 +102,13 @@ int gb_read_byte (uint16_t addr){
 }
 
 int gb_write_byte(uint16_t addr, uint8_t data){
-  if (addr >= 0xA000) gpio_put(PIN_CS, 0);
-  else gpio_put(PIN_CS, 1);
-
   int err = 0;
   err = internal_init(false);
   if (err) return err;
+
+  if (addr >= 0xA000) gpio_put(PIN_CS, 0);
+  else gpio_put(PIN_CS, 1);
+
   uint64_t time = time_us_64();
   while (pio_sm_is_tx_fifo_full(GBRW_PIO, GBRW_SM)){
      if (time_us_64() - time > USEC_PER_SEC*2) return -2;

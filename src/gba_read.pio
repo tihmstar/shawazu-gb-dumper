@@ -1,28 +1,33 @@
 ; Program name
 .program gba_read
-.side_set 2 opt
+.side_set 4
 
 .wrap_target
-  MOV OSR, !NULL       
-  OUT PINDIRS, 32      
-  PULL                   side 0b11
-  OUT NULL, 8            side 0b11
-  OUT PINS, 24     [3]   side 0b11
-  NOP              [3]   
-  PULL             [1]
-  MOV X, OSR       [3]   side 0b10
-  OUT NULL, 32     [2]     
+  MOV OSR, !NULL          side 0b1111
+  OUT PINDIRS, 32         side 0b1111
+  PULL                    side 0b1111
+  OUT NULL, 8             side 0b1111
+  OUT PINS, 24     [1]    side 0b1111
+  NOP              [1]    side 0b1111
+  NOP              [1]    side 0b1111
+  NOP              [1]    side 0b1111
+  PULL             [1]    side 0b1111
+  MOV X, OSR       [1]    side 0b0110
+  NOP              [1]    side 0b0110
+  OUT NULL, 32     [1]    side 0b0110
 
-  MOV OSR, !NULL         side 0b00
-  OUT NULL, 16         
-  OUT PINDIRS, 32  [3] 
+  MOV OSR, !NULL   [1]    side 0b0100
+  OUT NULL, 16            side 0b0100
+  OUT PINDIRS, 32  [1]    side 0b0100
+  NOP              [1]    side 0b0100
 
 continue_read:
-  IN PINS, 16          
-  PUSH            [3]  side 0b10
-  NOP                  
-  NOP             [2]  side 0b00
-  JMP X-- continue_read 
+  IN PINS, 16             side 0b0100
+  PUSH                    side 0b0110
+  NOP             [1]     side 0b0110
+  NOP             [1]     side 0b0110
+  NOP             [1]     side 0b0100
+  JMP X-- continue_read [1] side 0b0100
 .wrap
 
 
@@ -34,9 +39,12 @@ continue_read:
 #define PIN_A23                 23
 
 #define PIN_CS2                 24
+
 #define PIN_CS                  25
+
 #define PIN_NRD                 26
 #define PIN_NWR                 27
+
 #define PIN_CLK                 28
 
 static inline void gba_read_program_init(PIO pio, uint sm, uint offset) {
@@ -53,9 +61,9 @@ static inline void gba_read_program_init(PIO pio, uint sm, uint offset) {
 
   pio_sm_set_sideset_pins(pio, sm, 25);
   sm_config_set_sideset_pins(&c, 25);
-  sm_config_set_sideset(&c, 3, true, false);
+  sm_config_set_sideset(&c, 4, false, false);
 
-  float freq = 70; //MHz
+  float freq = 60; //MHz
   float div = (float)clock_get_hz(clk_sys) / (freq * 1e6);
   sm_config_set_clkdiv(&c, div);
 
