@@ -51,7 +51,8 @@ uint8_t CartridgeGBA::getSubType(){
 
   {
     char buf[0x1000] = {};
-    for (int i = 0; i < getROMSize(); i+=sizeof(buf)){
+    uint32_t romsize = getROMSize();
+    for (int i = 0; i < romsize; i+=sizeof(buf)){
       cassure(readROM(buf, sizeof(buf), i) == sizeof(buf));
       for (int z = 0; z<sizeof(buf); z+=4){
         uint32_t offset = 0;
