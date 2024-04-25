@@ -1,6 +1,7 @@
 
 #include "CartridgeGBA.hpp"
 #include "CartridgeGBASaveFlash.hpp"
+#include "CartridgeGBASaveEEPROM.hpp"
 #include "gbarw.h"
 #include "all.h"
 
@@ -103,6 +104,11 @@ uint8_t CartridgeGBA::getSubType(){
       case kGBACartridgeTypeSaveFlashExtended:
         this->~Cartridge();
         new(this) CartridgeGBASaveFlash;
+        break;
+
+      case kGBACartridgeTypeSaveEEPROM:
+        this->~Cartridge();
+        new(this) CartridgeGBASaveEEPROM;
         break;
 
       case kGBACartridgeTypeUnknown:
