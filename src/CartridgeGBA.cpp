@@ -9,6 +9,7 @@
 #include <string.h>
 #include <hardware/timer.h>
 #include <hardware/clocks.h>
+#include <tusb.h>
 
 
 #pragma mark CartridgeGBA
@@ -134,14 +135,34 @@ error:
 }
 
 uint32_t CartridgeGBA::getROMSize(){
-  int err = 0;
-  uint32_t dummy = 0;
+int err = 0;
+uint32_t dummy = 0;
 
-  cassure(readROM(&dummy, sizeof(&dummy), 0x00800200) == sizeof(dummy));
-  if (dummy == 0x01000100) return 0x800000;
+cassure(readROM(&dummy, sizeof(&dummy), 0x00800200) == sizeof(dummy));
+if (dummy == 0x01000100) return 0x800000;
+
+{
+  char buf[0x1000] = {};
+  tud_task();
+  if (readROM(&buf, sizeof(buf), 0x800000) != sizeof(buf)) goto not_8m_rom;
+  tud_task();
+
+  for (size_t i = 0x10; i < sizeof(buf); i++){
+    if (buf[i] != 0xFF) goto not_8m_rom;
+  }
+  tud_task();
+  return 0x800000;
+  not_8m_rom:;
+  tud_task();
+}
+/*
+  TODO: how does a 16M cart look like??
+*/
+// cassure(readROM(&dummy, sizeof(&dummy), 0x01000200) == sizeof(dummy));
+// if (dummy == 0x01000100) return 0x1000000;
 
 error:
-  return 0x1000000;
+  return 0x2000000;
 }
 
 uint32_t CartridgeGBA::getRAMSize(){

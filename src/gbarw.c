@@ -254,7 +254,7 @@ int gba_read(uint32_t addr, void *buf, uint32_t size){
   if (addr >= GBA_SAVEGAME_MAP_ADDRESS){
     return gba_read_sram((uint16_t)addr, buf, size);
   }else{
-    return gba_read_rom(addr & 0xFFFFFF, buf, size);
+    return gba_read_rom(addr & 0x3FFFFFF, buf, size);
   }
 
 }
@@ -275,7 +275,7 @@ int gba_read_byte(uint32_t addr){
     return gba_sram_read_byte_internal(addr);
   }else{
     uint8_t byte = 0xFF;
-    gba_read_rom(addr & 0xFFFFFF, &byte, 1);
+    gba_read_rom(addr & 0x3FFFFFF, &byte, 1);
     return byte;
   }
 }
