@@ -14,10 +14,11 @@
   PULL             [1]    side 0b1111
   MOV X, OSR       [1]    side 0b0110
   NOP              [1]    side 0b0110
+  NOP              [1]    side 0b0110
   OUT NULL, 32     [1]    side 0b0110
 
   MOV OSR, !NULL   [1]    side 0b0100
-  OUT NULL, 16            side 0b0100
+  OUT NULL, 16     [1]    side 0b0100
   OUT PINDIRS, 32  [1]    side 0b0100
   NOP              [1]    side 0b0100
 
