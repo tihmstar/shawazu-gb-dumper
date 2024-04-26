@@ -14,7 +14,8 @@
 
 #pragma mark public provider
 uint32_t CartridgeGBASaveEEPROM::getRAMSize(){
-  return 0x2000;
+  // return 0x2000;
+  return 0x200;
 }
 
 uint32_t CartridgeGBASaveEEPROM::readRAM(void *buf, uint32_t size, uint32_t offset){
@@ -37,15 +38,130 @@ error:
 }
 
 uint32_t CartridgeGBASaveEEPROM::writeRAM(const void *buf, uint32_t size, uint32_t offset){
-  return 0;
-}
+  int err = 0;
+  const uint8_t *ptr = (const uint8_t*)buf;
+  uint32_t didwrite = 0;
 
-int CartridgeGBASaveEEPROM::eraseRAM(){
-  return 0;
+  if (offset & 7){
+    uint64_t bdata = 0;
+    uint8_t boff = offset & 7;
+    uint8_t bsize = 8-boff;
+    cassure(eepromReadBlock(offset >> 3, &bdata) == sizeof(bdata));
+    memcpy(((uint8_t*)&bdata)+boff,ptr,bsize);
+    cassure(eepromWriteBlock(offset >> 3, bdata) == sizeof(bdata));
+    ptr += bsize;
+    offset += bsize;
+    didwrite += bsize;
+  }
+  
+
+  while (didwrite+8 <= size){
+    uint64_t bdata = 0;
+    memcpy(&bdata, ptr, sizeof(bdata));
+    cassure(eepromWriteBlock(offset >> 3, bdata) == sizeof(bdata));
+    ptr += sizeof(bdata);
+    offset += sizeof(bdata);
+    didwrite += sizeof(bdata);
+  }
+
+  if (didwrite < size){
+    //unaligned post write
+    uint64_t adata = 0;
+    uint8_t asize = size - didwrite;
+    cassure(eepromReadBlock(offset >> 3, &adata) == sizeof(adata));
+    memcpy(&adata,ptr,asize);
+    cassure(eepromWriteBlock(offset >> 3, adata) == sizeof(adata));
+    ptr += asize;
+    offset += asize;
+    didwrite += asize;
+  }  
+  
+error:
+  return didwrite;
 }
 
 #pragma mark GBA specifics public
+int CartridgeGBASaveEEPROM::eepromReadBlockSmall(uint16_t blocknum, uint64_t *out){
+  int err = 0;
+  if (blocknum > 0x3f) return -1;
+
+  uint16_t eepromcmd[9] = {0x01, 0x01};
+  uint16_t rbuf[68] = {};
+  uint64_t ret = 0;
+
+  for (int i=0; i<6; i++){
+    eepromcmd[i+2] = ((blocknum >> 5) & 1);
+    blocknum <<= 1;
+  }
+
+  cassure(gba_write(GBA_EEPROM_READ_ADDRESS, eepromcmd, sizeof(eepromcmd)) == sizeof(eepromcmd));
+  cassure(gba_read(GBA_EEPROM_READ_ADDRESS, rbuf, sizeof(rbuf)) == sizeof(rbuf));
+  for (size_t i = 0; i < 64; i++){
+    ret <<= 1;
+    ret |= rbuf[4+i] & 1;
+  }
+  
+  if (out) *out = ret;
+
+error:
+  if (err){
+    return 0;
+  }
+  return 8;
+}
+
 int CartridgeGBASaveEEPROM::eepromReadBlock(uint16_t blocknum, uint64_t *out){
-  if (blocknum > 0x3ff) return -1;
-  return 0;
+  if (getRAMSize() == 0x200){
+    return eepromReadBlockSmall(blocknum, out);
+  }else{
+    return -1;
+  }
+}
+
+int CartridgeGBASaveEEPROM::eepromWriteBlockSmall(uint16_t blocknum, uint64_t data){
+  int err = 0;
+  if (blocknum > 0x3f) return -1;
+
+  uint16_t eepromcmd[2+6+64+1] = {0x01, 0x00};
+  uint64_t oldData = 0;
+
+  {
+    /*
+      Don't overwrite data if it's already there
+    */
+    if (eepromReadBlock(blocknum, &oldData) == 8 && oldData == data) return 8;
+  }
+
+  for (int i=0; i<6; i++){
+    eepromcmd[i+2] = ((blocknum >> 5) & 1);
+    blocknum <<= 1;
+  }
+
+  for (int i=0; i<64; i++){
+    eepromcmd[i+2+6] = ((data >> 63) & 1);
+    data <<= 1;
+  }
+
+  cassure(gba_write(GBA_EEPROM_READ_ADDRESS, eepromcmd, sizeof(eepromcmd)) == sizeof(eepromcmd));
+
+  {
+    uint64_t time = time_us_64();
+    while (time_us_64() - time < 400*USEC_PER_MSEC){
+      if (gba_read_byte(GBA_EEPROM_READ_ADDRESS) & 1) 
+        return 8;
+      tud_task();
+    }
+    return -3;
+  }
+
+error:
+  return -2;
+}
+
+int CartridgeGBASaveEEPROM::eepromWriteBlock(uint16_t blocknum, uint64_t data){
+  if (getRAMSize() == 0x200){
+    return eepromWriteBlockSmall(blocknum, data);
+  }else{
+    return -1;
+  }
 }

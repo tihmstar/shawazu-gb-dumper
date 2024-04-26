@@ -48,7 +48,7 @@ continue_read:
 
 #define PIN_CLK                 28
 
-static inline void gba_read_program_init(PIO pio, uint sm, uint offset) {
+static inline void gba_read_program_init(PIO pio, uint sm, uint offset, bool is_slow_read) {
   pio_sm_config c = gba_read_program_get_default_config(offset);
 
   pio_sm_set_consecutive_pindirs(pio, sm, PIN_AD0, 29, true);  //address is out
@@ -65,6 +65,11 @@ static inline void gba_read_program_init(PIO pio, uint sm, uint offset) {
   sm_config_set_sideset(&c, 4, false, false);
 
   float freq = 60; //MHz
+
+  if (is_slow_read){
+    freq = 10;
+  }
+
   float div = (float)clock_get_hz(clk_sys) / (freq * 1e6);
   sm_config_set_clkdiv(&c, div);
 

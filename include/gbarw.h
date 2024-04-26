@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 #define GBA_SAVEGAME_MAP_ADDRESS 0x10000000
+#define GBA_EEPROM_READ_ADDRESS  0x01ffff00
 
 void gba_rw_init (void);
 void gba_rw_cleanup(void);

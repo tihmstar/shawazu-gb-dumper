@@ -1,0 +1,62 @@
+; Program name
+.program gba_eeprom_write
+  
+
+.wrap_target
+  set PINS, 0b11111
+  PULL
+  OUT NULL, 8
+  OUT PINS, 24
+  PULL
+  MOV X, OSR
+  OUT NULL, 32      [2]
+
+continue_write:
+  SET PINS, 0b01101 [1]
+  PULL
+  OUT NULL, 16       
+  OUT PINS, 16           
+  SET PINS, 0b00101 [23]
+  JMP X-- continue_write
+  SET X, 16
+  MOV ISR, X
+  push
+.wrap
+
+% c-sdk {
+#define PIN_AD0                  0
+#define PIN_AD15                15
+#define PIN_A23                 23
+
+#define PIN_CS2                 24
+
+#define PIN_CLK_v3              25
+#define PIN_CS_v2               25
+
+#define PIN_NRD                 26
+
+#define PIN_NWR                 27
+
+#define PIN_CLK_v2              28
+#define PIN_CS_v3               28
+
+static inline void gba_eeprom_write_program_init(PIO pio, uint sm, uint offset) {
+  pio_sm_config c = gba_eeprom_write_program_get_default_config(offset);
+
+  pio_sm_set_consecutive_pindirs(pio, sm, PIN_A0, 29, true);  //address+data is out
+  sm_config_set_out_pins(&c, PIN_A0, 24);
+
+  sm_config_set_set_pins(&c, PIN_CS2, 5 );
+
+  float freq = 40; //MHz
+  float div = (float)clock_get_hz(clk_sys) / (freq * 1e6);
+  sm_config_set_clkdiv(&c, div);
+
+  sm_config_set_in_shift(&c, false, false, 24);
+
+  for (int i=0; i<29; i++){
+    pio_gpio_init(pio, i);
+  }
+  pio_sm_init(pio, sm, offset, &c);
+}
+%}

@@ -16,10 +16,13 @@ public:
 
   virtual uint32_t readRAM(void *buf, uint32_t size, uint32_t offset = 0) override;
   virtual uint32_t writeRAM(const void *buf, uint32_t size, uint32_t offset = 0) override;
-  virtual int      eraseRAM() override;
 
 #pragma mark GBA specifics
+  int eepromReadBlockSmall(uint16_t blocknum, uint64_t *out);
   int eepromReadBlock(uint16_t blocknum, uint64_t *out);
+
+  int eepromWriteBlockSmall(uint16_t blocknum, uint64_t data);
+  int eepromWriteBlock(uint16_t blocknum, uint64_t data);
 };
 
 #endif // CARTRIDGEGBASAVEEEPROM_HPP
