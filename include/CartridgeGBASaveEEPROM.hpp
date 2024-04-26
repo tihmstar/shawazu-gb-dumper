@@ -19,9 +19,11 @@ public:
 
 #pragma mark GBA specifics
   int eepromReadBlockSmall(uint16_t blocknum, uint64_t *out);
+  int eepromReadBlockLarge(uint16_t blocknum, uint64_t *out);
   int eepromReadBlock(uint16_t blocknum, uint64_t *out);
 
   int eepromWriteBlockSmall(uint16_t blocknum, uint64_t data);
+  int eepromWriteBlockLarge(uint16_t blocknum, uint64_t data);
   int eepromWriteBlock(uint16_t blocknum, uint64_t data);
 };
 

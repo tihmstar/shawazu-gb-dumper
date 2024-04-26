@@ -48,7 +48,7 @@ error:
 uint8_t CartridgeGBA::getSubType(){
   int err = 0;
   uint8_t curtype = kGBACartridgeTypeUnknown;
-  char storageString[0x10] = {};
+  char storageString[0x10-1] = {};
 
   {
     char buf[0x1000] = {};
