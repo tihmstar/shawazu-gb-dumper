@@ -12,6 +12,10 @@
 #include <hardware/clocks.h>
 #include <tusb.h>
 
+#define GBA_ROM_SIZE_8M     0x81
+#define GBA_ROM_SIZE_16M    0x16
+#define GBA_ROM_SIZE_32M    0x32
+
 
 #pragma mark CartridgeGBA
 CartridgeGBA::CartridgeGBA(){
@@ -142,34 +146,68 @@ error:
 }
 
 uint32_t CartridgeGBA::getROMSize(){
-int err = 0;
-uint32_t dummy = 0;
-
-cassure(readROM(&dummy, sizeof(&dummy), 0x00800200) == sizeof(dummy));
-if (dummy == 0x01000100) return 0x800000;
-
-{
-  char buf[0x1000] = {};
-  tud_task();
-  if (readROM(&buf, sizeof(buf), 0x800000) != sizeof(buf)) goto not_8m_rom;
-  tud_task();
-
-  for (size_t i = 0x10; i < sizeof(buf); i++){
-    if (buf[i] != 0xFF) goto not_8m_rom;
+  int err = 0;
+  uint32_t dummy = 0;
+  uint8_t *stype = (uint8_t*)&_storage[sizeof(_storage)-1];
+reeval_loc:
+  switch (*stype){
+  case GBA_ROM_SIZE_8M:
+    return 0x0800000;
+  case GBA_ROM_SIZE_16M:
+    return 0x1000000;  
+  case GBA_ROM_SIZE_32M:
+    return 0x2000000;  
+  default:
+    break;
   }
-  tud_task();
-  return 0x800000;
-  not_8m_rom:;
-  tud_task();
-}
-/*
-  TODO: how does a 16M cart look like??
-*/
-// cassure(readROM(&dummy, sizeof(&dummy), 0x01000200) == sizeof(dummy));
-// if (dummy == 0x01000100) return 0x1000000;
+
+
+  cassure(readROM(&dummy, sizeof(&dummy), 0x00800200) == sizeof(dummy));
+  if (dummy == 0x01000100){
+    *stype = GBA_ROM_SIZE_8M;
+    goto reeval_loc;
+  }
+  
+  cassure(readROM(&dummy, sizeof(&dummy), 0x01004000) == sizeof(dummy));
+  if (dummy == 0x20002000){
+    /*
+      Pokemon leaf green GER
+    */
+    *stype = GBA_ROM_SIZE_16M;
+    goto reeval_loc;
+  }
+
+  {
+    char buf[0x200] = {};
+    tud_task();
+    if (readROM(&buf, sizeof(buf), 0x800000) != sizeof(buf)) goto not_8m_rom;
+    tud_task();
+
+    for (size_t i = 0x10; i < sizeof(buf); i++){
+      if (buf[i] != 0xFF) goto not_8m_rom;
+    }
+
+    tud_task();
+    /*
+      The first test fails to detect Pokemon leaf green GER
+    */
+    if (readROM(&buf, sizeof(buf), 0x00e00000) != sizeof(buf)) goto not_8m_rom;
+    tud_task();
+
+    for (size_t i = 0x10; i < sizeof(buf); i++){
+      if (buf[i] != 0xFF) goto not_8m_rom;
+    }
+
+    tud_task();
+    *stype = GBA_ROM_SIZE_8M;
+    goto reeval_loc;
+    not_8m_rom:;
+    tud_task();
+  }
 
 error:
-  return 0x2000000;
+  *stype = GBA_ROM_SIZE_32M;
+  goto reeval_loc;
 }
 
 uint32_t CartridgeGBA::getRAMSize(){

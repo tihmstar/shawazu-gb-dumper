@@ -17,7 +17,7 @@
 
 #pragma mark public provider
 uint32_t CartridgeGBASaveEEPROM::getRAMSize(){
-  uint8_t *stype = (uint8_t*)&_storage[sizeof(_storage)-1];
+  uint8_t *stype = (uint8_t*)&_storage[sizeof(_storage)-2];
   switch (*stype){
   case STORAGE_TYPE_4KBIT:
     return 0x200;
