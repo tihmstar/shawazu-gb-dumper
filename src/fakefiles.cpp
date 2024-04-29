@@ -118,10 +118,11 @@ const char *fakefiles_read_infotxt(Cartridge *cart, size_t *outSize){
     }
   }
 
-  bufcontent += snprintf(buf+bufcontent, sizeof(buf)-bufcontent-1, "\nShawazu GB Dumper Version: v%d.%d.%d%s %s (%s)\n"
+  bufcontent += snprintf(buf+bufcontent, sizeof(buf)-bufcontent-1, "\nShawazu GB Dumper Version: v%d.%d.%d%s %s%s(%s)\n"
                     ,SHAWAZU_VERSION_MAJOR,SHAWAZU_VERSION_MINOR,SHAWAZU_VERSION_PATCH
                     ,git_AnyUncommittedChanges() ? "-dirty" : ""
                     ,git_AnyUncommittedChanges() ? git_CommitSHA1() : ""
+                    ,git_AnyUncommittedChanges() ? " " : ""
                     ,git_CommitDate());
 
 
