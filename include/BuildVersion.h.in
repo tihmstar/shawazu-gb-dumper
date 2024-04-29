@@ -1,0 +1,13 @@
+#ifndef BUILDVERSION_H
+#define BUILDVERSION_H
+
+#define SHAWAZU_VERSION_MAJOR @shawazu-gb-dumper_VERSION_MAJOR@
+#define SHAWAZU_VERSION_MINOR @shawazu-gb-dumper_VERSION_MINOR@
+#define SHAWAZU_VERSION_PATCH @shawazu-gb-dumper_VERSION_PATCH@
+#define SHAWAZU_BUILD_VERSION_TYPE '@BUILD_VERSION_TYPE@'
+
+#if SHAWAZU_BUILD_VERSION_TYPE == 'U'
+#define DEBUG
+#endif
+
+#endif /* BUILDVERSION_H */

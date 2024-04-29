@@ -36,7 +36,8 @@
       "gba_read.pio.h": "c",
       "gba_sram_read.pio.h": "c",
       "gba_sram_write.pio.h": "c",
-      "compare": "cpp"
+      "compare": "cpp",
+      "*.in": "c"
     },
     "cmake.configureOnOpen": true,
 }

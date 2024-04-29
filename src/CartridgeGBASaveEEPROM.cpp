@@ -127,7 +127,7 @@ int CartridgeGBASaveEEPROM::eepromReadBlockSmall(uint16_t blocknum, uint64_t *ou
     ret |= rbuf[4+i] & 1;
   }
   
-  if (out) *out = ret;
+  if (out) *out = __builtin_bswap64(ret);
 
 error:
   if (err){
@@ -156,7 +156,7 @@ int CartridgeGBASaveEEPROM::eepromReadBlockLarge(uint16_t blocknum, uint64_t *ou
     ret |= rbuf[4+i] & 1;
   }
   
-  if (out) *out = ret;
+  if (out) *out = __builtin_bswap64(ret);
 
 error:
   if (err){
@@ -169,8 +169,7 @@ int CartridgeGBASaveEEPROM::eepromReadBlock(uint16_t blocknum, uint64_t *out){
   if (getRAMSize() == 0x200){
     return eepromReadBlockSmall(blocknum, out);
   }else{
-    // return eepromReadBlockLarge(blocknum, out);
-    return -1;
+    return eepromReadBlockLarge(blocknum, out);
   }
 }
 
@@ -180,6 +179,8 @@ int CartridgeGBASaveEEPROM::eepromWriteBlockSmall(uint16_t blocknum, uint64_t da
 
   uint16_t eepromcmd[2+6+64+1] = {0x01, 0x00};
   uint64_t oldData = 0;
+
+  data = __builtin_bswap64(data);
 
   {
     /*
@@ -221,6 +222,8 @@ int CartridgeGBASaveEEPROM::eepromWriteBlockLarge(uint16_t blocknum, uint64_t da
   uint16_t eepromcmd[2+14+64+1] = {0x01, 0x00};
   uint64_t oldData = 0;
 
+  data = __builtin_bswap64(data);
+
   {
     /*
       Don't overwrite data if it's already there
@@ -258,7 +261,6 @@ int CartridgeGBASaveEEPROM::eepromWriteBlock(uint16_t blocknum, uint64_t data){
   if (getRAMSize() == 0x200){
     return eepromWriteBlockSmall(blocknum, data);
   }else{
-    // return eepromWriteBlockLarge(blocknum, data);
-    return -1;
+    return eepromWriteBlockLarge(blocknum, data);
   }
 }
