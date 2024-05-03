@@ -39,6 +39,8 @@ public:
   virtual uint32_t readRAM(void *buf, uint32_t size, uint32_t offset = 0);
   virtual uint32_t writeRAM(const void *buf, uint32_t size, uint32_t offset = 0);
   virtual int      eraseRAM();
+  virtual int      readRTC(void *buf, size_t bufSize);
+  virtual int      writeRTC(const void *buf, size_t bufSize);
 };
 
 #endif // GBCARTRIDGE_HPP

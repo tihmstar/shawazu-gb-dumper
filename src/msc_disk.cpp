@@ -10,6 +10,30 @@
 #include "EmuFATFS.hpp"
 #include <hardware/watchdog.h>
 
+#define RTC_IMMUTABLE_TIMESTAMP 0x7fffffff7fffffff
+
+struct GBRTC{
+  uint8_t s;
+  uint8_t m;
+  uint8_t h;
+  uint8_t dl;
+  uint8_t dh;
+};
+
+struct RTCSave {
+  uint32_t real_s;
+  uint32_t real_m;
+  uint32_t real_h;
+  uint32_t real_dl;
+  uint32_t real_dh;
+  uint32_t lateched_s;
+  uint32_t lateched_m;
+  uint32_t lateched_h;
+  uint32_t lateched_dl;
+  uint32_t lateched_dh;
+  uint64_t timestamp;
+} rtcsave;
+
 extern Cartridge *gCart;
 
 static tihmstar::EmuFATFS<35,0x400> gEmuFat("SHAWAZU");
@@ -36,16 +60,33 @@ int32_t cb_read_rom(uint32_t offset, void *buf, uint32_t size, const char *filen
   return gCart->readROM(buf, size, offset);
 }
 
-static uint8_t gRTCmem[0x10] = {};
+static RTCSave gRTCmem = {};
 
 int32_t cb_read_ram(uint32_t offset, void *buf, uint32_t size, const char *filename){
   gSaveRamWasDeleted = false;
   uint32_t didRead = gCart->readRAM(buf, size, offset);
   if (offset + didRead == gCart->getRAMSize()){
+    if (gRTCmem.timestamp != RTC_IMMUTABLE_TIMESTAMP){
+      //read timestamp from cart
+      uint8_t rawTS[0x10] = {};
+      int tsDidRead = 0;
+      tsDidRead = gCart->readRTC(rawTS,sizeof(rawTS));
+      
+      if (tsDidRead == 5 && gCart->getType() == kCartridgeTypeGB){
+        //Pokemon Gold GB Timestamp
+        gRTCmem.real_s = gRTCmem.lateched_s = rawTS[0];
+        gRTCmem.real_m = gRTCmem.lateched_m = rawTS[1];
+        gRTCmem.real_h = gRTCmem.lateched_h = rawTS[2];
+        gRTCmem.real_dl = gRTCmem.lateched_dl = rawTS[3];
+        gRTCmem.real_dh = gRTCmem.lateched_dh = rawTS[4];
+      }
+
+      gRTCmem.timestamp = RTC_IMMUTABLE_TIMESTAMP;
+    }
     uint8_t *ptr = (uint8_t *)buf;
     uint32_t remainingSize = size-didRead;
     if (remainingSize > sizeof(gRTCmem)) remainingSize = sizeof(gRTCmem);
-    memcpy(&ptr[didRead], gRTCmem, remainingSize);
+    memcpy(&ptr[didRead], &gRTCmem, remainingSize);
     didRead += remainingSize;
   } 
   return didRead;
@@ -65,8 +106,23 @@ int32_t cb_write_ram(uint32_t offset, const void *buf, uint32_t size, const char
       const uint8_t *ptr = (const uint8_t *)buf;
       uint32_t remainingSize = size-didWrite;
       if (remainingSize > sizeof(gRTCmem)) remainingSize = sizeof(gRTCmem);
-      memcpy(gRTCmem, &ptr[didWrite], remainingSize);
+      memcpy(&gRTCmem, &ptr[didWrite], remainingSize);
+      gRTCmem.timestamp = RTC_IMMUTABLE_TIMESTAMP;
       didWrite += remainingSize;
+
+      if (remainingSize == sizeof(gRTCmem) && gCart->getType() == kCartridgeTypeGB){
+        //Pokemon Gold GB Timestamp
+        uint8_t rawTS[0x10] = {};
+
+        rawTS[0] = (uint8_t)gRTCmem.real_s;
+        rawTS[1] = (uint8_t)gRTCmem.real_m;
+        rawTS[2] = (uint8_t)gRTCmem.real_h;
+        rawTS[3] = (uint8_t)gRTCmem.real_dl;
+        rawTS[4] = ((uint8_t)gRTCmem.real_dh) & 0xC1;
+        gCart->writeRTC(rawTS, 5);
+
+        watchdog_reboot(0,0,0);
+      }
     } 
     return didWrite;
   }
@@ -92,6 +148,7 @@ int32_t cb_read_cam_image(uint32_t offset, void *buf, uint32_t size, const char 
 
 void init_fakefatfs(void){
   gEmuFat.resetFiles();
+  gRTCmem = {};
 
   {
     size_t infoSize = 0;

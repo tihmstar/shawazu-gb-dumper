@@ -4,6 +4,9 @@
 #include "gbrw.h"
 
 #include <stdio.h>
+#include <hardware/timer.h>
+#include <hardware/clocks.h>
+#include <tusb.h>
 
 #pragma mark public provider
 uint32_t CartridgeGBMBC3::readROM(void *buf_, uint32_t size, uint32_t offset){
@@ -121,4 +124,90 @@ uint32_t CartridgeGBMBC3::writeRAM(const void *buf_, uint32_t size, uint32_t off
   gb_write_byte(0x4000, 0x0);
 
   return writeSize;
+}
+
+int CartridgeGBMBC3::readRTC(void *buf, size_t bufSize){
+  int err = 0;
+
+  uint8_t *ptr = (uint8_t*)buf;
+  int didRead = 0;
+
+  // Enable RTC access
+  gb_write_byte(0x0000, 0x0A);
+
+  //perform latch
+  gb_write_byte(0x6000, 0x00);
+  gb_write_byte(0x6000, 0x01);
+
+  for (didRead = 0; didRead < 5 && didRead < bufSize; didRead++){
+    gb_write_byte(0x4000, 0x08 + didRead);
+    sleep_ms(4);
+    ptr[didRead] = gb_read_byte(0xA000);
+    {
+      uint64_t time = time_us_64();
+      while (time_us_64() - time < 4*USEC_PER_MSEC){
+        tud_task();
+      }
+    }
+  }
+
+error:
+  // Disable RTC access
+  gb_write_byte(0x0000, 0x00);
+
+  // Reset bank selection
+  gb_write_byte(0x4000, 0x0);
+
+  if (err){
+    return -err;
+  }
+  return didRead;
+}
+
+int CartridgeGBMBC3::writeRTC(const void *buf, size_t bufSize){
+  int err = 0;
+
+  const uint8_t *ptr = (const uint8_t*)buf;
+  int didWrite = 0;
+
+  // Enable RTC access
+  gb_write_byte(0x0000, 0x0A);
+
+  //perform latch
+  gb_write_byte(0x6000, 0x00);
+  gb_write_byte(0x6000, 0x01);
+
+  {
+    //stop RTC
+    gb_write_byte(0x4000, 0x0C);
+    uint8_t ctrlByte = gb_read_byte(0xA000);
+    ctrlByte |= 0x40;
+    sleep_ms(4);
+    gb_write_byte(0xA000,ctrlByte);
+    sleep_ms(4);
+  }
+
+  for (didWrite = 0; didWrite < 5 && didWrite < bufSize; didWrite++){
+    gb_write_byte(0x4000, 0x08 + didWrite);
+    sleep_ms(4);
+    gb_write_byte(0xA000, ptr[didWrite]);
+    {
+      uint64_t time = time_us_64();
+      while (time_us_64() - time < 4*USEC_PER_MSEC){
+        tud_task();
+      }
+    }
+  }
+
+error:
+  // Disable RTC access
+  gb_write_byte(0x0000, 0x00);
+
+  // Reset bank selection
+  gb_write_byte(0x4000, 0x0);
+
+  if (err){
+    return -err;
+  }
+  return didWrite;
 }
