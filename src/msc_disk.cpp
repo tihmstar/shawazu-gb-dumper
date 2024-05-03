@@ -119,9 +119,9 @@ int32_t cb_write_ram(uint32_t offset, const void *buf, uint32_t size, const char
         rawTS[2] = (uint8_t)gRTCmem.real_h;
         rawTS[3] = (uint8_t)gRTCmem.real_dl;
         rawTS[4] = ((uint8_t)gRTCmem.real_dh) & 0xC1;
-        gCart->writeRTC(rawTS, 5);
-
-        watchdog_reboot(0,0,0);
+        if (gCart->writeRTC(rawTS, 5) == 5){
+          watchdog_reboot(0,0,0);
+        }
       }
     } 
     return didWrite;
