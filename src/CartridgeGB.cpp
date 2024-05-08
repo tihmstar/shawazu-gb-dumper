@@ -5,6 +5,7 @@
 
 #include "CartridgeGBMBC1.hpp"
 #include "CartridgeGBMBC3.hpp"
+#include "CartridgeGBMBC5.hpp"
 
 #include <stdio.h>
 #include <new>
@@ -64,6 +65,15 @@ uint8_t CartridgeGB::getSubType(){
           curtype = kGBCartridgeTypeMBC3;
           break;
 
+      case 0x19:
+      case 0x1A:
+      case 0x1B:
+      case 0x1C:
+      case 0x1D:
+      case 0x1E:
+          curtype = kGBCartridgeTypeMBC5;
+          break;
+
       case 0xFC:
           curtype = kGBCartridgeTypeCamera;
           break;
@@ -84,6 +94,11 @@ uint8_t CartridgeGB::getSubType(){
       case kGBCartridgeTypeMBC3:
         this->~Cartridge();
         new(this) CartridgeGBMBC3;
+        break;
+
+      case kGBCartridgeTypeMBC5:
+        this->~Cartridge();
+        new(this) CartridgeGBMBC5;
         break;
 
       case kGBCartridgeTypeRomOnly:

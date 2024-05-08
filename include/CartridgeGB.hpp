@@ -10,6 +10,7 @@ enum GBCartridgeType {
   kGBCartridgeTypeRomOnly,
   kGBCartridgeTypeMBC1,
   kGBCartridgeTypeMBC3,
+  kGBCartridgeTypeMBC5,
   kGBCartridgeTypeCamera,
 };
 
