@@ -167,7 +167,12 @@ void init_fakefatfs(void){
     snprintf(romname, sizeof(romname), "%s%s",title, isColor ? " (Color)" : "");
     gEmuFat.addFile(romname,suffix, gCart->getROMSize(), cb_read_rom);
     if (uint32_t ramsize = gCart->getRAMSize()){
-      gEmuFat.addFile(romname, "sav", ramsize + sizeof(gRTCmem), cb_read_ram, cb_write_ram);
+      uint32_t savsize = ramsize;
+      if (gCart->getType() == kCartridgeTypeGBA || (gCart->getType() == kCartridgeTypeGB && gCart->getSubType() == kGBCartridgeTypeMBC3)){
+        savsize += sizeof(gRTCmem);
+      }
+
+      gEmuFat.addFile(romname, "sav", savsize, cb_read_ram, cb_write_ram);
     }
   }
 
