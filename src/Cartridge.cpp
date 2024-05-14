@@ -3,6 +3,8 @@
 #include "CartridgeGB.hpp"
 #include "CartridgeGBA.hpp"
 
+#include "all.h"
+#include "pico/stdlib.h"
 #include <utility>
 #include <new>
 
@@ -11,7 +13,7 @@ Cartridge::Cartridge()
 : _type{kCartridgeTypeNone}, _subtype{0}
 , _storage{}
 {
-  //
+  gpio_put(MINI_VOLTAGE_CTRL_PIN, 0);
 }
 
 Cartridge::~Cartridge(){

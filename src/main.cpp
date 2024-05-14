@@ -15,6 +15,13 @@ void cdc_task(void);
 
 
 int main() {
+  /*
+    First thing, init mini voltage to 3v3
+  */
+  gpio_init(MINI_VOLTAGE_CTRL_PIN);
+  gpio_set_dir(MINI_VOLTAGE_CTRL_PIN, GPIO_OUT);
+  gpio_put(MINI_VOLTAGE_CTRL_PIN, 0);
+
   {
     static Cartridge cartHolder;
     gCart = &cartHolder;

@@ -7,6 +7,7 @@
 #include "CartridgeGBMBC3.hpp"
 #include "CartridgeGBMBC5.hpp"
 
+#include "pico/stdlib.h"
 #include <stdio.h>
 #include <new>
 
@@ -34,8 +35,10 @@ bool CartridgeGB::isConnected(){
     chksum -= buf[i] + 1;
   }
 
-  return (chksum ^ buf[0x19]) == 0;
-
+  if ((chksum ^ buf[0x19]) == 0){
+    gpio_put(MINI_VOLTAGE_CTRL_PIN, 1);
+    return true;
+  }
 error:
   return false;
 }
