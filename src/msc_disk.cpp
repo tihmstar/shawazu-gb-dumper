@@ -9,6 +9,7 @@
 #include "CartridgeGB.hpp"
 #include "EmuFATFS.hpp"
 #include <hardware/watchdog.h>
+#include <pico/bootrom.h>
 
 #define RTC_IMMUTABLE_TIMESTAMP 0x7fffffff7fffffff
 
@@ -145,8 +146,15 @@ int32_t cb_read_cam_image(uint32_t offset, void *buf, uint32_t size, const char 
   return size;
 }
 
+void cb_newFile(const char *filename, const char filenameSuffix[3], uint32_t fileSize){
+  if (strncasecmp(filenameSuffix, "UF2",3) == 0){
+    reset_usb_boot(0,0);
+  }
+}
+
 void init_fakefatfs(void){
   gEmuFat.resetFiles();
+  gEmuFat.registerNewfileCallback(cb_newFile);
   gRTCmem = {};
 
   {
