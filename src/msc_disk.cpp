@@ -43,6 +43,7 @@ static bool ejected = false;
 static bool fatIsInited = false;
 static bool gSaveRamWasDeleted = false;
 static int gIsIOInProgress = 0;
+static CartridgeType gLastCartridgeType = kCartridgeTypeNone;
 
 int32_t cb_read_info(uint32_t offset, void *buf, uint32_t size, const char *filename){
   size_t infoSize = 0;
@@ -155,47 +156,48 @@ void init_fakefatfs(void){
   }
 
   CartridgeType cType = gCart->getType();
-  if (cType == kCartridgeTypeNone) return;
+  if (cType != kCartridgeTypeNone){
+    char title[0x20] = {};
+    bool isColor = false;
+    const char *suffix = (cType == kCartridgeTypeGBA) ? "gba" : "gb";
+    gCart->readTitle(title, sizeof(title), &isColor);
 
-  char title[0x20] = {};
-  bool isColor = false;
-  const char *suffix = (cType == kCartridgeTypeGBA) ? "gba" : "gb";
-  gCart->readTitle(title, sizeof(title), &isColor);
-
-  {
-    char romname[0x40] = {};
-    snprintf(romname, sizeof(romname), "%s%s",title, isColor ? " (Color)" : "");
-    gEmuFat.addFile(romname,suffix, gCart->getROMSize(), cb_read_rom);
-    if (uint32_t ramsize = gCart->getRAMSize()){
-      uint32_t savsize = ramsize;
-      if (gCart->getType() == kCartridgeTypeGBA || (gCart->getType() == kCartridgeTypeGB && gCart->getSubType() == kGBCartridgeTypeMBC3)){
-        savsize += sizeof(gRTCmem);
-      }
-
-      gEmuFat.addFile(romname, "sav", savsize, cb_read_ram, cb_write_ram);
-    }
-  }
-
-  if (cType == kCartridgeTypeGB){
-    CartridgeGB *gbcart = (CartridgeGB*)gCart;
-    if (gbcart->getSubType() == kGBCartridgeTypeCamera){
-      char activePhotos[0x1E];
-      gbcart->readRAM(activePhotos, sizeof(activePhotos), 0x11B2);
-
-      for (int p = 0; p < sizeof(activePhotos); p++) {
-        size_t fileSize = 7286;
-        char filename[sizeof("DEL_IMG_") + 0x1E];
-        if (activePhotos[p] != 0xFF) {
-          // This photo is used
-          snprintf(filename, sizeof(filename), "IMG_%02d", p);
-        } else {
-          // This photo is not used
-          snprintf(filename, sizeof(filename), "DEL_IMG_%02d", p);
+    {
+      char romname[0x40] = {};
+      snprintf(romname, sizeof(romname), "%s%s",title, isColor ? " (Color)" : "");
+      gEmuFat.addFile(romname,suffix, gCart->getROMSize(), cb_read_rom);
+      if (uint32_t ramsize = gCart->getRAMSize()){
+        uint32_t savsize = ramsize;
+        if (gCart->getType() == kCartridgeTypeGBA || (gCart->getType() == kCartridgeTypeGB && gCart->getSubType() == kGBCartridgeTypeMBC3)){
+          savsize += sizeof(gRTCmem);
         }
-        gEmuFat.addFile(filename, "bmp", fileSize, cb_read_cam_image);
-      }    
+
+        gEmuFat.addFile(romname, "sav", savsize, cb_read_ram, cb_write_ram);
+      }
+    }
+
+    if (cType == kCartridgeTypeGB){
+      CartridgeGB *gbcart = (CartridgeGB*)gCart;
+      if (gbcart->getSubType() == kGBCartridgeTypeCamera){
+        char activePhotos[0x1E];
+        gbcart->readRAM(activePhotos, sizeof(activePhotos), 0x11B2);
+
+        for (int p = 0; p < sizeof(activePhotos); p++) {
+          size_t fileSize = 7286;
+          char filename[sizeof("DEL_IMG_") + 0x1E];
+          if (activePhotos[p] != 0xFF) {
+            // This photo is used
+            snprintf(filename, sizeof(filename), "IMG_%02d", p);
+          } else {
+            // This photo is not used
+            snprintf(filename, sizeof(filename), "DEL_IMG_%02d", p);
+          }
+          gEmuFat.addFile(filename, "bmp", fileSize, cb_read_cam_image);
+        }    
+      }
     }
   }
+
   fatIsInited = true;
   gSaveRamWasDeleted = false;
 }
@@ -236,14 +238,17 @@ bool tud_msc_test_unit_ready_cb(uint8_t lun){
   if (!gIsIOInProgress){
     gIsIOInProgress++;
 
-    if (gCart->getType() == kCartridgeTypeNone){
+    CartridgeType curType = gCart->getType();
+    if (curType != gLastCartridgeType){
       fatIsInited = false;
+      tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3a, 0x00);
 
     } else{
       if (!fatIsInited){
         init_fakefatfs();
       }
     }
+    gLastCartridgeType = curType;
 
     gIsIOInProgress--;
   }
