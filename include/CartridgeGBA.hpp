@@ -6,7 +6,8 @@
 #include <stdint.h>
 
 enum GBACartridgeType {
-  kGBACartridgeTypeUnknown = 0,
+  kGBACartridgeTypeNotChecked = 0,
+  kGBACartridgeTypeUnknown,
   kGBACartridgeTypeSaveSRAM,
   kGBACartridgeTypeSaveFlash,
   kGBACartridgeTypeSaveFlashExtended,

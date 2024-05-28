@@ -51,10 +51,10 @@ error:
 #pragma mark public provider
 uint8_t CartridgeGBA::getSubType(){
   int err = 0;
-  uint8_t curtype = kGBACartridgeTypeUnknown;
+  uint8_t curtype = _subtype;
   char storageString[0x10-1] = {};
 
-  {
+  if (_subtype == kGBACartridgeTypeNotChecked){
     char buf[0x1000] = {};
     uint32_t romsize = getROMSize();
     for (int i = 0; i < romsize; i+=sizeof(buf)){
@@ -91,6 +91,8 @@ uint8_t CartridgeGBA::getSubType(){
               curtype = kGBACartridgeTypeSaveFlashExtended;
               _storage[sizeof("FLASH1M_V")+3] = 0;
               goto type_search_end;
+            } else {
+              curtype = kGBACartridgeTypeUnknown;
             } 
           }
           break;
@@ -231,6 +233,10 @@ uint32_t CartridgeGBA::writeRAM(const void *buf, uint32_t size, uint32_t offset)
 
 #pragma mark GB specifics
 const char *CartridgeGBA::getStorageType(){
+  if (_subtype == kGBACartridgeTypeNotChecked){
+    getSubType();
+  }
+  if (_subtype == kGBACartridgeTypeNotChecked) return "SUBTYPE ERROR";
   if (_subtype == kGBACartridgeTypeUnknown) return "Unknown";
   return (char*)_storage;
 }
