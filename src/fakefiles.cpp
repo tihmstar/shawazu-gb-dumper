@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "all.h"
+
 #include <include/BuildVersion.h>
 #include <git_commit.h>
 
@@ -124,6 +126,14 @@ const char *fakefiles_read_infotxt(Cartridge *cart, size_t *outSize){
                     ,git_AnyUncommittedChanges() ? git_CommitSHA1() : ""
                     ,git_AnyUncommittedChanges() ? " " : ""
                     ,git_CommitDate());
+
+  bufcontent += snprintf(buf+bufcontent, sizeof(buf)-bufcontent-1, "Board pinout (software): %s\n", 
+#ifdef REV2_LAYOUT
+"rev2"
+#else
+"rev3"
+#endif
+  );
 
 
   if (outSize) *outSize = bufcontent;
