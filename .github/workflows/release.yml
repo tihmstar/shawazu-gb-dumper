@@ -1,62 +1,64 @@
-# This starter workflow is for a CMake project running on a single platform. There is a different starter workflow if you need cross-platform coverage.
-# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-multi-platform.yml
 name: Build release
 
 on:
   push:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+*' # Push events to any matching semantic tag. For example, 1.10.1 or 2.0.0 or 3.0.0-alpha.
-        # For more details, see https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
 
 env:
-  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
 
 jobs:
   build:
+    strategy:
+      matrix:
+        config: [release_rev3, release_rev2, hw_troubleshoot]
+
     runs-on: ubuntu-latest
     container: 
       image: shilga/raspberry-pi-pico-gbdk-docker:v0.4
 
+    env:
+      BUILDDIR: "build_${{ matrix.config }}"
+
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: 'true'
 
     - name: Configure CMake
-      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-      run: |
-        echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" >> $GITHUB_ENV
-        echo 'github.workspace = ${{ github.workspace }}'
-        echo "GITHUB_WORKSPACE = $GITHUB_WORKSPACE"
-        echo 'runner.workspace = ${{ runner.workspace }}'
-        echo "RUNNER_WORKSPACE = $RUNNER_WORKSPACE"
-        cmake --fresh -B $GITHUB_WORKSPACE/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_TIME_PROVIDED_VERSION=${{ github.ref_name }}
-
-    - name: Build
-      # Build your program with the given configuration
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
-        echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" >> $GITHUB_ENV
-        echo "GITHUB_SHA=$GITHUB_SHA" >> $GITHUB_ENV
-        echo 'github.workspace = ${{ github.workspace }}'
-        echo "GITHUB_WORKSPACE = $GITHUB_WORKSPACE"
-        echo 'runner.workspace = ${{ runner.workspace }}'
-        echo "RUNNER_WORKSPACE = $RUNNER_WORKSPACE"
-        cmake --build $GITHUB_WORKSPACE/build --config ${{env.BUILD_TYPE}}
+        if [ x"${{ matrix.config }}" == "xrelease_rev2" ]; then
+          echo "Build for config: REV2_LAYOUT"
+          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DBUILD_TIME_PROVIDED_VERSION=${{ github.ref_name }} -DREV2_LAYOUT=1
+
+        elif [ x"${{ matrix.config }}" == "xhw_troubleshoot" ]; then
+          echo "Build for config: HW_TROUBLESHOOT"
+          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DBUILD_TIME_PROVIDED_VERSION=${{ github.ref_name }} -DHW_TROUBLESHOOT_BUILD=1
+
+        else
+          echo "Build for config: default"
+          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DBUILD_TIME_PROVIDED_VERSION=${{ github.ref_name }}
+
+        fi
+
+    - name: Build
+      run: |
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        make -C ${{ github.workspace }}/${{ env.BUILDDIR }} -j
 
     - name: Package artifacts
       run: |
-        cd ${{env.GITHUB_WORKSPACE}}/build
-        tar cvzf shawazu-gb-dumper-${{ github.ref_name }}.tgz *.bin *.elf *.elf.map *.hex *.uf2
+        cd ${{ github.workspace }}/${{ env.BUILDDIR }}
+        tar cvzf ${GITHUB_WORKSPACE}/shawazu-gb-dumper-${{ matrix.config }}-${{ github.ref_name }}.tgz *.bin *.elf *.elf.map *.hex *.uf2
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: shawazu-gb-dumper-${{ github.ref_name }}
+        name: shawazu-gb-dumper-${{ matrix.config }}-${{ github.ref_name }}
         path: |
-          ${{env.GITHUB_WORKSPACE}}/build/*.tgz
+          ${{ github.workspace }}/shawazu-gb-dumper-*-${{ github.ref_name }}.tgz
 
   create_release:
     name: Create release

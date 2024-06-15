@@ -17,3 +17,6 @@
   if optional solder sys "PICO_CLK" -> rev3
 */
 // #define REV2_LAYOUT 
+
+
+// #define HW_TROUBLESHOOT_BUILD

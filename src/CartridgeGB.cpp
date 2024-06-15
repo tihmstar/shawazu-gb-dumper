@@ -26,6 +26,10 @@ CartridgeGB::~CartridgeGB(){
 #pragma mark private provider
 
 bool CartridgeGB::isConnected(){
+#ifdef HW_TROUBLESHOOT_BUILD
+  return true;
+#endif
+
   int err = 0;
   uint8_t buf[0x1a] = {};
   uint8_t chksum = 0;
@@ -86,6 +90,10 @@ uint8_t CartridgeGB::getSubType(){
           break;
   }
 
+#ifdef HW_TROUBLESHOOT_BUILD
+  curtype = kGBCartridgeTypeRomOnly;
+#endif
+
   if (_subtype != curtype){
     switch (curtype){
       case kGBCartridgeTypeMBC1:
@@ -123,9 +131,17 @@ size_t CartridgeGB::readTitle(char *buf, size_t bufSize, bool *isColor){
   size_t ret = 0;
   bool color = false;
 
-  if (bufSize > 17) bufSize = 17;  
+  if (bufSize > 17) bufSize = 17;
+
+#ifdef HW_TROUBLESHOOT_BUILD
+  strncpy(buf, "debug", bufSize);
+  ret = sizeof("debug")-1;
+  if (ret > bufSize) ret = bufSize;
+#else
   cassure((ret = readROM(buf, bufSize, 0x134)) == bufSize);
-  buf[ret] = '\0';
+#endif
+
+  buf[ret-1] = '\0';
 
   if (ret >= 16) {
       if (buf[15] == 0x80 || buf[15] == 0xC0) {
@@ -142,10 +158,16 @@ error:
 }
 
 uint32_t CartridgeGB::getROMSize(){
+#ifdef HW_TROUBLESHOOT_BUILD
+  return 0x8000;
+#endif
   return getROMBankCount() << 14;
 }
 
 uint32_t CartridgeGB::getRAMSize(){
+#ifdef HW_TROUBLESHOOT_BUILD
+  return 0;
+#endif
   return getRAMBankCount() << 13;
 }
 
