@@ -45,7 +45,7 @@ The DIY variant is open hardware. You can find the KiCad files and the gerber fi
 Alternatively, you can purchase a DIY self-solder kit from a partnered seller.  
 The Shawazu mini is still in development and will hopefully be soon available at a partnered seller.
 
-## Offical partnered sellers
+## Official partnered sellers
 * Coming soon!
 
 # Demos
