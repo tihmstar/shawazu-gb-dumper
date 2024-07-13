@@ -46,7 +46,7 @@ Alternatively, you can purchase a DIY self-solder kit from a partnered seller.
 The Shawazu mini is still in development and will hopefully be soon available at a partnered seller.
 
 ## Official partnered sellers
-* Coming soon!
+* [RetroReiZ](https://retroreiz.de/shop/werkstatt/ersatzteile-gameboy-classic/shawazu-gb-dumper-kit-fuer-gameboy-spiele-cartridges-diy-version/)
 
 # Demos
 
