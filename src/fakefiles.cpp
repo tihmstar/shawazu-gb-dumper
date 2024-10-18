@@ -128,6 +128,9 @@ const char *fakefiles_read_infotxt(Cartridge *cart, size_t *outSize){
                     ,git_CommitDate());
 
   bufcontent += snprintf(buf+bufcontent, sizeof(buf)-bufcontent-1, "Board pinout (software): %s\n", 
+#ifdef HW_TROUBLESHOOT_BUILD
+"hw_toubleshoot "
+#endif
 #ifdef REV2_LAYOUT
 "rev2"
 #else
