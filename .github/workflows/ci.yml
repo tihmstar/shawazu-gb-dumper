@@ -32,30 +32,30 @@ jobs:
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         if [ x"${{ matrix.config }}" == "xrelease_rev2" ]; then
           echo "Build for config: REV2_LAYOUT"
-          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DREV2_LAYOUT=1
+          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DREV2_LAYOUT=1
 
         elif [ x"${{ matrix.config }}" == "xhw_troubleshoot" ]; then
           echo "Build for config: HW_TROUBLESHOOT"
-          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DHW_TROUBLESHOOT_BUILD=1
+          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DHW_TROUBLESHOOT_BUILD=1
 
         else
           echo "Build for config: default"
-          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
         fi
 
     - name: Build
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
-        make -C ${{ github.workspace }}/${{ env.BUILDDIR }} -j
+        make -C ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }} -j
 
     - name: Archive artifacts
       uses: actions/upload-artifact@v4
       with:
         name: shawazu-gb-dumper-binaries-${{ matrix.config }}-${{ github.sha }}
         path: |
-          ${{ github.workspace }}/${{ env.BUILDDIR }}/*.bin
-          ${{ github.workspace }}/${{ env.BUILDDIR }}/*.elf
-          ${{ github.workspace }}/${{ env.BUILDDIR }}/*.elf.map
-          ${{ github.workspace }}/${{ env.BUILDDIR }}/*.hex
-          ${{ github.workspace }}/${{ env.BUILDDIR }}/*.uf2
+          ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }}/*.bin
+          ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }}/*.elf
+          ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }}/*.elf.map
+          ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }}/*.hex
+          ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }}/*.uf2
