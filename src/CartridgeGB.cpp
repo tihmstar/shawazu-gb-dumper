@@ -136,7 +136,7 @@ size_t CartridgeGB::readTitle(char *buf, size_t bufSize, bool *isColor){
 
 #ifdef HW_TROUBLESHOOT_BUILD
   strncpy(buf, "debug", bufSize);
-  ret = sizeof("debug")-1;
+  ret = sizeof("debug");
   if (ret > bufSize) ret = bufSize;
 #else
   cassure((ret = readROM(buf, bufSize, 0x134)) == bufSize);
