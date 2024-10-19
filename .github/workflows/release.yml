@@ -33,7 +33,7 @@ jobs:
         CONF=$(echo ${{ matrix.config }} | cut -d '-' -f1)
         if echo ${{ matrix.config }} | grep -q "readonly_msc"; then
           echo "enable readonly msc"
-          CONFARGS+=" -DREADONLY_MSC=1"
+          CONFARGS="${CONFARGS} -DREADONLY_MSC=1"
         fi
         if [ x"${CONF}" == "xrelease_rev2" ]; then
           echo "Build for config: REV2_LAYOUT"
