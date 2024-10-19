@@ -136,6 +136,9 @@ const char *fakefiles_read_infotxt(Cartridge *cart, size_t *outSize){
 #else
 "rev3"
 #endif
+#ifdef READONLY_MSC
+" (readonly msc)"
+#endif
   );
 
 

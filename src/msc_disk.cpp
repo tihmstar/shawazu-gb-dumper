@@ -314,6 +314,9 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
 
 bool tud_msc_is_writable_cb (uint8_t lun) {
   (void) lun;
+#ifdef READONLY_MSC
+  return false;
+#endif
   return true;
 }
 

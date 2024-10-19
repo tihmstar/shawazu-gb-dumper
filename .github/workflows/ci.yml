@@ -13,7 +13,7 @@ jobs:
   build:
     strategy:
       matrix:
-        config: [release_rev3, release_rev2, hw_troubleshoot]
+        config: [release_rev3, release_rev2, hw_troubleshoot, release_rev3-readonly_msc]
 
     runs-on: ubuntu-latest
     container: 
@@ -30,17 +30,23 @@ jobs:
     - name: Configure CMake
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
-        if [ x"${{ matrix.config }}" == "xrelease_rev2" ]; then
+        CONFARGS=""
+        CONF=$(echo ${{ matrix.config }} | cut -d '-' -f1)
+        if echo ${{ matrix.config }} | grep -q "readonly_msc"; then
+          echo "enable readonly msc"
+          CONFARGS+=" -DREADONLY_MSC=1"
+        fi
+        if [ x"${CONF}" == "xrelease_rev2" ]; then
           echo "Build for config: REV2_LAYOUT"
-          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DREV2_LAYOUT=1
+          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} ${CONFARGS} -DREV2_LAYOUT=1
 
-        elif [ x"${{ matrix.config }}" == "xhw_troubleshoot" ]; then
+        elif [ x"${CONF}" == "xhw_troubleshoot" ]; then
           echo "Build for config: HW_TROUBLESHOOT"
-          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DHW_TROUBLESHOOT_BUILD=1
+          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} ${CONFARGS} -DHW_TROUBLESHOOT_BUILD=1
 
         else
           echo "Build for config: default"
-          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} ${CONFARGS}
 
         fi
 
