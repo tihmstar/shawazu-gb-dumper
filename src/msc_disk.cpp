@@ -146,7 +146,7 @@ int32_t cb_read_cam_image(uint32_t offset, void *buf, uint32_t size, const char 
   return size;
 }
 
-void cb_newFile(const char *filename, const char filenameSuffix[3], uint32_t fileSize){
+void cb_newFile(const char *filename, const char filenameSuffix[3], uint32_t fileSize, uint32_t clusterLocation){
   if (strncasecmp(filenameSuffix, "UF2",3) == 0){
     reset_usb_boot(0,0);
   }
