@@ -37,15 +37,15 @@ jobs:
         fi
         if [ x"${CONF}" == "xrelease_rev2" ]; then
           echo "Build for config: REV2_LAYOUT"
-          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} ${CONFARGS} -DREV2_LAYOUT=1
+          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DBUILD_TIME_PROVIDED_VERSION=${{ github.ref_name }} ${CONFARGS} -DREV2_LAYOUT=1
 
         elif [ x"${CONF}" == "xhw_troubleshoot" ]; then
           echo "Build for config: HW_TROUBLESHOOT"
-          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} ${CONFARGS} -DHW_TROUBLESHOOT_BUILD=1
+          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DBUILD_TIME_PROVIDED_VERSION=${{ github.ref_name }} ${CONFARGS} -DHW_TROUBLESHOOT_BUILD=1
 
         else
           echo "Build for config: default"
-          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} ${CONFARGS}
+          cmake --fresh -B ${{ github.workspace }}/${{ env.BUILDDIR }}_${{ matrix.config }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DBUILD_TIME_PROVIDED_VERSION=${{ github.ref_name }} ${CONFARGS}
 
         fi
 
