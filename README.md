@@ -57,4 +57,4 @@ Gameboy Camera Images are automatically converted to bmp files.
 <br><img src="https://github.com/tihmstar/shawazu-gb-dumper/blob/master/images/gb_camera.jpg?raw=true" width="400" />
 
 # Discord
-One day i will probably make my own discord server for these kind of projects. Until then you can find me on the [Corco Cartridge Dev](https://discord.com/invite/jxGfqw2mdt) server in the **SHAWAZU** subsection.
+One day i will probably make my own discord server for these kind of projects. Until then you can find me on the [Croco Cartridge Dev](https://discord.com/invite/jxGfqw2mdt) server in the **SHAWAZU** subsection.
