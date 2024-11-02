@@ -163,6 +163,8 @@ void init_fakefatfs(void){
     gEmuFat.addFile("Info","txt", infoSize, cb_read_info);
   }
 
+  gEmuFat.addFile(".metadata_never_index","", 0, cb_read_info);
+
   CartridgeType cType = gCart->getType();
   if (cType != kCartridgeTypeNone){
     char title[0x20] = {};
@@ -180,7 +182,7 @@ void init_fakefatfs(void){
           savsize += sizeof(gRTCmem);
         }
 
-        gEmuFat.addFile(romname, "sav", savsize, cb_read_ram, cb_write_ram);
+        gEmuFat.addFileDynamic(romname, "sav", savsize, 0, cb_read_ram, cb_write_ram);
       }
     }
 
