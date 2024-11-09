@@ -1,15 +1,14 @@
 ; Program name
 .program gb_read
   
- set PINS, 0b0110 [6] ;Clock low
+ set PINS, 0b0110 [6]   ; CLK=0,~WR=1,~RD=1,~CS=0
 
 .wrap_target
   pull
-  out NULL, 16
   out PINS, 16
-  set PINS, 0b0100 [8] ;lock high (2 insn left)
-  in PINS, 8
-  set PINS, 0b0110 ;Clock low
+  set PINS, 0b0100 [8]  ; CLK=0,~WR=1,~RD=0,~CS=0
+  in  PINS, 8
+  set PINS, 0b0110      ; CLK=0,~WR=1,~RD=1,~CS=0
   push [6]
 .wrap
 
@@ -43,8 +42,8 @@ static inline void gb_read_program_init(PIO pio, uint sm, uint offset) {
   float div = (float)clock_get_hz(clk_sys) / freq;
   sm_config_set_clkdiv(&c, div);
 
-  sm_config_set_in_shift(&c, false, false, 16);
-  sm_config_set_out_shift(&c, false, false, 8);
+  sm_config_set_in_shift(&c, false, false, 8);
+  sm_config_set_out_shift(&c, true, false, 16);
 
   pio_sm_init(pio, sm, offset, &c);
 }
