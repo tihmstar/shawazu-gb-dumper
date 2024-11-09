@@ -1,13 +1,13 @@
 ; Program name
 .program gb_write
   
- set PINS, 0b0110 [7] ;Clock low
+ set PINS, 0b0110 [7] ; CLK=0,~WR=1,~RD=1,~CS=0
 
 .wrap_target
   pull
   out PINS, 24
-  set PINS, 0b1011 [9] ;clock high (2 insn left)
-  set PINS, 0b0110 [4] ;clock low
+  set PINS, 0b1011 [9] ; CLK=1,~WR=0,~RD=1,~CS=1
+  set PINS, 0b0110 [4] ; CLK=0,~WR=1,~RD=1,~CS=0
   SET X, 8
   MOV ISR, X
   push
@@ -40,7 +40,7 @@ static inline void gb_write_program_init(PIO pio, uint sm, uint offset) {
   float div = (float)clock_get_hz(clk_sys) / freq;
   sm_config_set_clkdiv(&c, div);
 
-  sm_config_set_in_shift(&c, false, false, 24);
+  sm_config_set_out_shift(&c, true, false, 24);
 
   pio_sm_init(pio, sm, offset, &c);
 }

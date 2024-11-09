@@ -91,13 +91,9 @@ int gb_read_byte (uint16_t addr){
   if (addr >= 0xA000) gpio_put(PIN_CS, 0);
   else gpio_put(PIN_CS, 1);
 
-  pio_sm_put(GBRW_PIO, GBRW_SM, addr);
-  uint64_t time = time_us_64();
-  while (pio_sm_is_rx_fifo_empty(GBRW_PIO, GBRW_SM)){
-     if (time_us_64() - time > USEC_PER_SEC*2) return -2;
-  }
-  uint8_t val = pio_sm_get(GBRW_PIO, GBRW_SM);
+  pio_sm_put_blocking(GBRW_PIO, GBRW_SM, addr);
 
+  uint8_t val = pio_sm_get_blocking(GBRW_PIO, GBRW_SM);
   return val;
 }
 
@@ -109,17 +105,10 @@ int gb_write_byte(uint16_t addr, uint8_t data){
   if (addr >= 0xA000) gpio_put(PIN_CS, 0);
   else gpio_put(PIN_CS, 1);
 
-  uint64_t time = time_us_64();
-  while (pio_sm_is_tx_fifo_full(GBRW_PIO, GBRW_SM)){
-     if (time_us_64() - time > USEC_PER_SEC*2) return -2;
-  }
   uint32_t val = (((uint32_t)data) << 16) | addr;
-  pio_sm_put(GBRW_PIO, GBRW_SM, val);
-  time = time_us_64();
-  while (pio_sm_is_rx_fifo_empty(GBRW_PIO, GBRW_SM)){
-    if (time_us_64() - time > USEC_PER_SEC*2) return -3;
-  }
-  uint8_t rval = pio_sm_get(GBRW_PIO, GBRW_SM);
+  pio_sm_put_blocking(GBRW_PIO, GBRW_SM, val);
+
+  uint8_t rval = pio_sm_get_blocking(GBRW_PIO, GBRW_SM);
   return rval == 8 ? 0 : -4;
 }
 
