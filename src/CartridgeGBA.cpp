@@ -170,30 +170,31 @@ reeval_loc:
     goto reeval_loc;
   }
   
-  cassure(readROM(&dummy, sizeof(&dummy), 0x01004000) == sizeof(dummy));
-  if (dummy == 0x20002000){
-    /*
-      Pokemon leaf green GER
-    */
-    *stype = GBA_ROM_SIZE_16M;
-    goto reeval_loc;
-  }
-
   {
     char buf[0x200] = {};
     tud_task();
-    if (readROM(&buf, sizeof(buf), 0x800000) != sizeof(buf)) goto not_8m_rom;
-    tud_task();
+    // if (readROM(&buf, sizeof(buf), 0x800000) != sizeof(buf)) goto not_8m_rom;
+    // tud_task();
 
-    for (size_t i = 0x10; i < sizeof(buf); i++){
-      if (buf[i] != 0xFF) goto not_8m_rom;
-    }
+    // for (size_t i = 0x10; i < sizeof(buf); i++){
+    //   if (buf[i] != 0xFF) goto not_8m_rom;
+    // }
 
-    tud_task();
+    // tud_task();
+    // /*
+    //   Detect Pokemon leaf green GER
+    // */
+    // if (readROM(&buf, sizeof(buf), 0x00e00000) != sizeof(buf)) goto not_8m_rom;
+    // tud_task();
+
+    // for (size_t i = 0x10; i < sizeof(buf); i++){
+    //   if (buf[i] != 0xFF) goto not_8m_rom;
+    // }
+
     /*
-      The first test fails to detect Pokemon leaf green GER
+      Detect Pokemon leaf green JPN
     */
-    if (readROM(&buf, sizeof(buf), 0x00e00000) != sizeof(buf)) goto not_8m_rom;
+    if (readROM(&buf, sizeof(buf), 0x00d00000) != sizeof(buf)) goto not_8m_rom;
     tud_task();
 
     for (size_t i = 0x10; i < sizeof(buf); i++){
@@ -204,6 +205,23 @@ reeval_loc:
     *stype = GBA_ROM_SIZE_8M;
     goto reeval_loc;
     not_8m_rom:;
+    tud_task();
+  }
+
+{
+    char buf[0x200] = {};
+    tud_task();
+    if (readROM(&buf, sizeof(buf), 0x01004000) != sizeof(buf)) goto not_16m_rom;
+    tud_task();
+
+    for (size_t i = 0x10; i < sizeof(buf); i++){
+      if (buf[i] != 0xFF) goto not_16m_rom;
+    }
+
+    tud_task();
+    *stype = GBA_ROM_SIZE_16M;
+    goto reeval_loc;
+    not_16m_rom:;
     tud_task();
   }
 
