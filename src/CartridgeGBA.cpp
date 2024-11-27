@@ -37,7 +37,7 @@ bool CartridgeGBA::isConnected(){
 
   if (buf[0xB2] != 0x96) return false;
 
-  for (int i=0xA0; i<0xBC; i++){
+  for (int i=0xA0; i<=0xBC; i++){
     chksum -= buf[i];
   }
   chksum -= 0x19;
