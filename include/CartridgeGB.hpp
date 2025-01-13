@@ -12,6 +12,7 @@ enum GBCartridgeType {
   kGBCartridgeTypeMBC3,
   kGBCartridgeTypeMBC5,
   kGBCartridgeTypeCamera,
+  kGBCartridgeTypeHuC1,
 };
 
 class CartridgeGB : public Cartridge {

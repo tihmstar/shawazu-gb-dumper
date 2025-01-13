@@ -6,6 +6,7 @@
 #include "CartridgeGBMBC1.hpp"
 #include "CartridgeGBMBC3.hpp"
 #include "CartridgeGBMBC5.hpp"
+#include "CartridgeGBHuC1.hpp"
 
 #include "pico/stdlib.h"
 #include <stdio.h>
@@ -86,6 +87,10 @@ uint8_t CartridgeGB::getSubType(){
           curtype = kGBCartridgeTypeCamera;
           break;
 
+      case 0xFF:
+          curtype = kGBCartridgeTypeHuC1;
+          break;
+
       default:
           curtype = kGBCartridgeTypeUnknown;
           break;
@@ -111,6 +116,11 @@ uint8_t CartridgeGB::getSubType(){
       case kGBCartridgeTypeMBC5:
         this->~Cartridge();
         new(this) CartridgeGBMBC5;
+        break;
+
+      case kGBCartridgeTypeHuC1:
+        this->~Cartridge();
+        new(this) CartridgeGBHuC1;
         break;
 
       case kGBCartridgeTypeRomOnly:

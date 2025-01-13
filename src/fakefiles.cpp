@@ -76,6 +76,7 @@ const char *fakefiles_read_infotxt(Cartridge *cart, size_t *outSize){
           case 0x1D: cartType = "MBC5+RUMBLE+RAM"; break;
           case 0x1E: cartType = "MBC5+RUMBLE+RAM+BATTERY"; break;
           case 0xFC: cartType = "POCKET CAMERA"; break;
+          case 0xFF: cartType = "HuC1+RAM+BATTERY"; break;
           default: break;
         }
         bufcontent += snprintf(buf+bufcontent, sizeof(buf)-bufcontent-1, "Cartridge Type: %s(%d)\n", cartType, cartTypeVal);

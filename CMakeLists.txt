@@ -63,6 +63,7 @@ add_executable(${PROJECT_NAME}
     src/CartridgeGBMBC1.cpp
     src/CartridgeGBMBC3.cpp
     src/CartridgeGBMBC5.cpp
+    src/CartridgeGBHuC1.cpp
     src/EmuFATFS.cpp
     src/fakefiles.cpp
     src/gbrw.c
