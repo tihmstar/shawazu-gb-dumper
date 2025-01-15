@@ -73,7 +73,7 @@ uint32_t CartridgeGBHuC1::readRAM(void *buf_, uint32_t size, uint32_t offset){
   }
 
   // Disable RAM
-  gb_write_byte(0x0000, 0x00);
+  gb_write_byte(0x0000, 0x0E);
 
   // Reset bank selection
   gb_write_byte(0x4000, 0x0);
@@ -114,7 +114,7 @@ uint32_t CartridgeGBHuC1::writeRAM(const void *buf_, uint32_t size, uint32_t off
   }
 
   // Disable RAM
-  gb_write_byte(0x0000, 0x00);
+  gb_write_byte(0x0000, 0x0E);
 
   // Reset bank selection
   gb_write_byte(0x4000, 0x0);
