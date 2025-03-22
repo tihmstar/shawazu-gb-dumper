@@ -21,7 +21,23 @@ struct GBRTC{
   uint8_t dh;
 };
 
-struct RTCSave {
+struct GBRATC{
+  uint8_t y;
+  uint8_t mon;
+  uint8_t d;
+  uint8_t dow;
+  uint8_t h;
+  uint8_t min;
+  uint8_t sec;
+  uint8_t status;
+};
+
+struct RTCGBASave {
+  struct GBRATC rtc;
+  uint64_t timestamp;
+};
+
+struct RTCGBSave {
   uint32_t real_s;
   uint32_t real_m;
   uint32_t real_h;
@@ -62,35 +78,44 @@ int32_t cb_read_rom(uint32_t offset, void *buf, uint32_t size, const char *filen
   return gCart->readROM(buf, size, offset);
 }
 
-static RTCSave gRTCmem = {};
-
 int32_t cb_read_ram(uint32_t offset, void *buf, uint32_t size, const char *filename){
   gSaveRamWasDeleted = false;
   uint32_t didRead = gCart->readRAM(buf, size, offset);
   if (offset + didRead == gCart->getRAMSize()){
-    if (gRTCmem.timestamp != RTC_IMMUTABLE_TIMESTAMP){
+    uint32_t rtcSize = 0;
+    void *rtcBuf = NULL;
+    struct RTCGBSave gbRTCmem = {};
+    struct RTCGBASave gbaRTCmem = {};
+
+    if (gCart->getType() == kCartridgeTypeGB){
       //read timestamp from cart
       uint8_t rawTS[0x10] = {};
-      int tsDidRead = 0;
-      tsDidRead = gCart->readRTC(rawTS,sizeof(rawTS));
-      
-      if (tsDidRead == 5 && gCart->getType() == kCartridgeTypeGB){
+      int tsDidRead = gCart->readRTC(rawTS,sizeof(rawTS));
+      if (tsDidRead == 5){
         //Pokemon Gold GB Timestamp
-        gRTCmem.real_s = gRTCmem.lateched_s = rawTS[0];
-        gRTCmem.real_m = gRTCmem.lateched_m = rawTS[1];
-        gRTCmem.real_h = gRTCmem.lateched_h = rawTS[2];
-        gRTCmem.real_dl = gRTCmem.lateched_dl = rawTS[3];
-        gRTCmem.real_dh = gRTCmem.lateched_dh = rawTS[4];
+        gbRTCmem.real_s = gbRTCmem.lateched_s = rawTS[0];
+        gbRTCmem.real_m = gbRTCmem.lateched_m = rawTS[1];
+        gbRTCmem.real_h = gbRTCmem.lateched_h = rawTS[2];
+        gbRTCmem.real_dl = gbRTCmem.lateched_dl = rawTS[3];
+        gbRTCmem.real_dh = gbRTCmem.lateched_dh = rawTS[4];        
       }
+      gbRTCmem.timestamp = RTC_IMMUTABLE_TIMESTAMP;
 
-      gRTCmem.timestamp = RTC_IMMUTABLE_TIMESTAMP;
+      rtcBuf = &gbRTCmem;
+      rtcSize = sizeof(gbRTCmem);
+    } else if (gCart->getType() == kCartridgeTypeGBA){
+      gCart->readRTC(&gbaRTCmem,sizeof(gbaRTCmem));
+      gbaRTCmem.timestamp = RTC_IMMUTABLE_TIMESTAMP;
+      rtcBuf = &gbaRTCmem;
+      rtcSize = sizeof(gbaRTCmem);
     }
+
     uint8_t *ptr = (uint8_t *)buf;
     uint32_t remainingSize = size-didRead;
-    if (remainingSize > sizeof(gRTCmem)) remainingSize = sizeof(gRTCmem);
-    memcpy(&ptr[didRead], &gRTCmem, remainingSize);
-    didRead += remainingSize;
-  } 
+    if (remainingSize > rtcSize) remainingSize = rtcSize;
+    memcpy(&ptr[didRead], rtcBuf, remainingSize);
+    didRead += remainingSize;    
+  }
   return didRead;
 }
 
@@ -105,25 +130,38 @@ int32_t cb_write_ram(uint32_t offset, const void *buf, uint32_t size, const char
     gSaveRamWasDeleted = false;
     uint32_t didWrite = gCart->writeRAM(buf, size, offset);
     if (offset + didWrite == gCart->getRAMSize()){
+      uint32_t rtcSize = 0;
+      void *rtcBuf = NULL;
+      struct RTCGBSave gbRTCmem = {};
+      struct RTCGBASave gbaRTCmem = {};
+      if (gCart->getType() == kCartridgeTypeGB){
+        rtcBuf = &gbRTCmem;
+        rtcSize = sizeof(gbRTCmem);
+      } else if (gCart->getType() == kCartridgeTypeGBA){
+        rtcBuf = &gbaRTCmem;
+        rtcSize = sizeof(gbaRTCmem);
+      }
+      
       const uint8_t *ptr = (const uint8_t *)buf;
       uint32_t remainingSize = size-didWrite;
-      if (remainingSize > sizeof(gRTCmem)) remainingSize = sizeof(gRTCmem);
-      memcpy(&gRTCmem, &ptr[didWrite], remainingSize);
-      gRTCmem.timestamp = RTC_IMMUTABLE_TIMESTAMP;
-      didWrite += remainingSize;
+      if (remainingSize > rtcSize) remainingSize = rtcSize;
+      memcpy(rtcBuf, &ptr[didWrite], remainingSize);
+      didWrite += remainingSize;  
 
-      if (remainingSize == sizeof(gRTCmem) && gCart->getType() == kCartridgeTypeGB){
+      if (remainingSize == sizeof(gbRTCmem) && gCart->getType() == kCartridgeTypeGB){
         //Pokemon Gold GB Timestamp
         uint8_t rawTS[0x10] = {};
 
-        rawTS[0] = (uint8_t)gRTCmem.real_s;
-        rawTS[1] = (uint8_t)gRTCmem.real_m;
-        rawTS[2] = (uint8_t)gRTCmem.real_h;
-        rawTS[3] = (uint8_t)gRTCmem.real_dl;
-        rawTS[4] = ((uint8_t)gRTCmem.real_dh) & 0xC1;
+        rawTS[0] = (uint8_t)gbRTCmem.real_s;
+        rawTS[1] = (uint8_t)gbRTCmem.real_m;
+        rawTS[2] = (uint8_t)gbRTCmem.real_h;
+        rawTS[3] = (uint8_t)gbRTCmem.real_dl;
+        rawTS[4] = ((uint8_t)gbRTCmem.real_dh) & 0xC1;
         gCart->writeRTC(rawTS, 5);
+      }else if (remainingSize == sizeof(gbaRTCmem) && gCart->getType() == kCartridgeTypeGBA){
+        gCart->writeRTC(&gbaRTCmem,sizeof(gbaRTCmem));
       }
-    } 
+    }
     return didWrite;
   }
 }
@@ -155,7 +193,6 @@ void cb_newFile(const char *filename, const char filenameSuffix[3], uint32_t fil
 void init_fakefatfs(void){
   gEmuFat.resetFiles();
   gEmuFat.registerNewfileCallback(cb_newFile);
-  gRTCmem = {};
 
   {
     size_t infoSize = 0;
@@ -178,8 +215,10 @@ void init_fakefatfs(void){
       gEmuFat.addFile(romname,suffix, gCart->getROMSize(), cb_read_rom);
       if (uint32_t ramsize = gCart->getRAMSize()){
         uint32_t savsize = ramsize;
-        if (gCart->getType() == kCartridgeTypeGBA || (gCart->getType() == kCartridgeTypeGB && gCart->getSubType() == kGBCartridgeTypeMBC3)){
-          savsize += sizeof(gRTCmem);
+        if (gCart->getType() == kCartridgeTypeGB && gCart->getSubType() == kGBCartridgeTypeMBC3){
+          savsize += sizeof(struct RTCGBSave);
+        } else if (gCart->getType() == kCartridgeTypeGBA) {
+          savsize += sizeof(struct RTCGBASave);
         }
 
         gEmuFat.addFileDynamic(romname, "sav", savsize, 0, cb_read_ram, cb_write_ram);

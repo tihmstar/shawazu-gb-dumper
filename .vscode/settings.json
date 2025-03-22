@@ -39,7 +39,8 @@
       "compare": "cpp",
       "*.in": "c",
       "gbrw.h": "c",
-      "timer.h": "c"
+      "timer.h": "c",
+      "gba_eeprom_write.pio.h": "c"
     },
     "cmake.configureOnOpen": true,
 }

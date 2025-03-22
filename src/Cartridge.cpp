@@ -105,3 +105,7 @@ int Cartridge::readRTC(void *buf, size_t bufSize){
 int Cartridge::writeRTC(const void *buf, size_t bufSize){
   return -99;
 }
+
+bool Cartridge::hasRTC(){
+  return false;
+}

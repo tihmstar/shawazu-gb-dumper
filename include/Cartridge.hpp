@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 // #define CARTRIDGE_TITLE_SIZE 17 // 16 bytes + NULL terminator
 
@@ -41,6 +42,7 @@ public:
   virtual int      eraseRAM();
   virtual int      readRTC(void *buf, size_t bufSize);
   virtual int      writeRTC(const void *buf, size_t bufSize);
+  virtual bool     hasRTC();
 };
 
 #endif // GBCARTRIDGE_HPP

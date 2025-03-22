@@ -12,6 +12,7 @@ public:
   virtual uint32_t writeRAM(const void *buf, uint32_t size, uint32_t offset = 0) override;
 
   virtual int      readRTC(void *buf, size_t bufSize) override;
-  virtual int      writeRTC(const void *buf, size_t bufSize);
+  virtual int      writeRTC(const void *buf, size_t bufSize) override;
+  virtual bool     hasRTC() override;
 };
 #endif // GBCARTRIDGEGBMBC3_HPP

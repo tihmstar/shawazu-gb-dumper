@@ -20,15 +20,14 @@
   MOV OSR, !NULL   [1]    side 0b0100
   OUT NULL, 16     [1]    side 0b0100
   OUT PINDIRS, 32  [1]    side 0b0100
-  NOP              [1]    side 0b0100
 
 continue_read:
+  NOP              [1]    side 0b0100
+  NOP             [1]     side 0b0100
+  NOP             [1]     side 0b0100
   IN PINS, 16             side 0b0100
   PUSH                    side 0b0110
-  NOP             [1]     side 0b0110
-  NOP             [1]     side 0b0110
-  NOP             [1]     side 0b0100
-  JMP X-- continue_read [1] side 0b0100
+  JMP X-- continue_read [1] side 0b0110
 .wrap
 
 
@@ -48,7 +47,7 @@ continue_read:
 
 #define PIN_CLK                 28
 
-static inline void gba_read_program_init(PIO pio, uint sm, uint offset, bool is_slow_read) {
+static inline void gba_read_program_init(PIO pio, uint sm, uint offset, bool is_slow_read, uint32_t initBits) {
   pio_sm_config c = gba_read_program_get_default_config(offset);
 
   pio_sm_set_consecutive_pindirs(pio, sm, PIN_AD0, 29, true);  //address is out
@@ -76,10 +75,14 @@ static inline void gba_read_program_init(PIO pio, uint sm, uint offset, bool is_
   sm_config_set_in_shift(&c, false, false, 24);
   sm_config_set_out_shift(&c, false, false, 16);
 
+  pio_sm_init(pio, sm, offset, &c);
+  pio_sm_set_pins_with_mask(pio, sm, 0xFFFFFFFF, (1<<PIN_NRD) | (1<<PIN_NWR) | (1<<PIN_CS2) | (1<<PIN_CS) | initBits);
+  pio_sm_set_pindirs_with_mask(pio, sm, 0xFFFFFFFF, 0xFFFFFFFF);
+
   for (int i=0; i<29; i++){
+    if (i==PIN_NWR) continue;
+    if (i==PIN_CS2) continue;
     pio_gpio_init(pio, i);
   }
-
-  pio_sm_init(pio, sm, offset, &c);
 }
 %}

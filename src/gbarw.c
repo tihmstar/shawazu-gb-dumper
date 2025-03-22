@@ -66,15 +66,26 @@ static int internal_init(int mode){
             internal_deinit();
             gRead_pio_pc = pio_add_program(GBARW_PIO, &gba_read_program);
           }
+          
+          {
+            /*
+              Bus keep while transitioning
+            */
+            uint32_t piostate = GBARW_PIO->dbg_padout;
+            sio_hw->gpio_clr = (piostate ^ 0xFFFFFFFF) & 0x1FFFFFFF;
+            sio_hw->gpio_set = (piostate) & 0x1FFFFFFF;
+            sio_hw->gpio_oe_set = 0x1FFFFFFF;
 
-          gba_read_program_init(GBARW_PIO, GBARW_SM, gRead_pio_pc, mode == MODE_READ_EEPROM);
-          gpio_init(PIN_NWR);
-          gpio_set_dir(PIN_NWR, GPIO_OUT);
-          gpio_put(PIN_NWR, 1);
+            gpio_put(PIN_NWR, 1);
+            gpio_put(PIN_NRD, 1);
+            gpio_put(PIN_CS2, 1);
+            gpio_put(PIN_CS, 1);
 
-          gpio_init(PIN_CS2);
-          gpio_set_dir(PIN_CS2, GPIO_OUT);
-          gpio_put(PIN_CS2, 1);
+            for (size_t i = 0; i < 29; i++){
+              gpio_set_function(i, GPIO_FUNC_SIO);
+            }
+            gba_read_program_init(GBARW_PIO, GBARW_SM, gRead_pio_pc, mode == MODE_READ_EEPROM, piostate);
+          }
 
           if (mode == MODE_READ_EEPROM){
             gpio_init(PIN_A23);
@@ -205,7 +216,7 @@ static int gba_read_rom(uint32_t addr, void *buf, uint32_t size){
     if ((size & 1) == 0) needsRawReads++;
 
     pio_sm_put(GBARW_PIO, GBARW_SM, addr>>1);
-    pio_sm_put(GBARW_PIO, GBARW_SM, needsRawReads);
+    pio_sm_put(GBARW_PIO, GBARW_SM, needsRawReads-1);
 
     int v = popPicoSM();
     if (v < 0) return v;
@@ -222,7 +233,7 @@ static int gba_read_rom(uint32_t addr, void *buf, uint32_t size){
     }
 
     pio_sm_put(GBARW_PIO, GBARW_SM, addr>>1);
-    pio_sm_put(GBARW_PIO, GBARW_SM, needsRawReads);
+    pio_sm_put(GBARW_PIO, GBARW_SM, needsRawReads-1);
   }
   
   if (didRead > 3){
@@ -309,11 +320,17 @@ static int gba_write_rom(uint32_t addr, const void *buf, int size){
   while (!pio_sm_is_rx_fifo_empty(GBARW_PIO, GBARW_SM)) 
     pio_sm_get(GBARW_PIO, GBARW_SM);
 
-  gpio_put(PIN_A23, 1);
+  if (addr <= 0xC8) {
+    //actually RTC!
+    gpio_put(PIN_A23, 0);
+  }else{
+    //actually EEPROM
+    gpio_put(PIN_A23, 1);
+  }
 
   needsWriteRaw = size / 2;
   if (needsWriteRaw){
-    pio_sm_put(GBARW_PIO, GBARW_SM, addr);
+    pio_sm_put(GBARW_PIO, GBARW_SM, addr<<7);
     pio_sm_put(GBARW_PIO, GBARW_SM, needsWriteRaw-1);
 
     didWrite = needsWriteRaw<<1;
@@ -370,6 +387,7 @@ int gba_write_byte(uint32_t addr, uint8_t data){
     if (err) return err;
     return gba_write_sram_byte_internal((uint16_t)addr, data);
   }else{
-    return -1;
+    uint16_t word = data;
+    return gba_write_rom(addr & 0x3FFFFFF, &word, 2);
   }
 }

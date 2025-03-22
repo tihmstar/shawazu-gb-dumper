@@ -17,6 +17,22 @@
 #define GBA_ROM_SIZE_32M    0x32
 
 
+#define GBA_RTC_ADDR_IO_PINS     0xC4
+#define GBA_RTC_ADDR_IO_PINDIRS  0xC6
+#define GBA_RTC_ADDR_IO_CONTROL  0xC8
+
+#define GBA_RTC_PIN_SCK (1<<0)
+#define GBA_RTC_PIN_SIO (1<<1)
+#define GBA_RTC_PIN_CS  (1<<2)
+
+#define GBA_RTC_PINMASK__CS_SIO_SCK(CS,SIO,SCK) (((CS!=0) << 2) | ((SIO!=0) << 1) | ((SCK!=0) << 0))
+
+#define RTC_CMD_READ(x)   (((x)<<1) | 0x61)
+#define RTC_CMD_WRITE(x)  (((x)<<1) | 0x60)
+
+#define RTC_CMD_OP_STATUS_REGISTER_ACCESS 0b001
+#define RTC_CMD_OP_REALTIME_DATA_ACCESS_1 0b010
+
 #pragma mark CartridgeGBA
 CartridgeGBA::CartridgeGBA(){
   _type = kCartridgeTypeGBA;
@@ -249,7 +265,118 @@ uint32_t CartridgeGBA::writeRAM(const void *buf, uint32_t size, uint32_t offset)
   return gba_write(GBA_SAVEGAME_MAP_ADDRESS + offset, buf, size);
 }
 
-#pragma mark GB specifics
+
+#pragma mark RTC
+static void rtc_write_cmd(uint8_t byte){
+  uint16_t word = byte << 1;
+  for (int i = 7; i >= 0; i--){
+    uint8_t b = (word >> i) & 2;
+    gba_write_byte(GBA_RTC_ADDR_IO_PINS, GBA_RTC_PIN_CS | b);
+    gba_write_byte(GBA_RTC_ADDR_IO_PINS, GBA_RTC_PIN_CS | b);
+    gba_write_byte(GBA_RTC_ADDR_IO_PINS, GBA_RTC_PIN_CS | b);
+    gba_write_byte(GBA_RTC_ADDR_IO_PINS, GBA_RTC_PIN_CS | b | GBA_RTC_PIN_SCK);
+  }
+}
+
+static void rtc_write_data(uint8_t byte){
+  uint16_t word = byte << 1;
+  for (int i = 0; i < 8; i++){
+    uint8_t b = (word >> i) & 2;
+    gba_write_byte(GBA_RTC_ADDR_IO_PINS, GBA_RTC_PIN_CS | b);
+    gba_write_byte(GBA_RTC_ADDR_IO_PINS, GBA_RTC_PIN_CS | b);
+    gba_write_byte(GBA_RTC_ADDR_IO_PINS, GBA_RTC_PIN_CS | b);
+    gba_write_byte(GBA_RTC_ADDR_IO_PINS, GBA_RTC_PIN_CS | b | GBA_RTC_PIN_SCK);
+  }
+}
+
+static uint8_t rtc_read(){
+  uint16_t ret = 0;
+  for (size_t i = 0; i < 8; i++){
+    for (int z = 0; z < 5; z++){
+      gba_write_byte(GBA_RTC_ADDR_IO_PINS, GBA_RTC_PIN_CS);
+    }
+    gba_write_byte(GBA_RTC_ADDR_IO_PINS, GBA_RTC_PIN_CS | 0 | GBA_RTC_PIN_SCK);
+    uint8_t b = gba_read_byte(GBA_RTC_ADDR_IO_PINS);
+		ret |= ((b & 2)<<i);
+  }
+  return ret >> 1;
+}
+
+static uint8_t enableRTC(){
+  gba_write_byte(GBA_RTC_ADDR_IO_CONTROL, 1);
+  gba_write_byte(GBA_RTC_ADDR_IO_PINS, 0 | 0 | GBA_RTC_PIN_SCK);
+  gba_write_byte(GBA_RTC_ADDR_IO_PINS, GBA_RTC_PIN_CS | 0 | GBA_RTC_PIN_SCK);
+  gba_write_byte(GBA_RTC_ADDR_IO_PINDIRS, GBA_RTC_PIN_CS | GBA_RTC_PIN_SIO | GBA_RTC_PIN_SCK);
+  rtc_write_cmd(RTC_CMD_READ(RTC_CMD_OP_STATUS_REGISTER_ACCESS));
+  gba_write_byte(GBA_RTC_ADDR_IO_PINDIRS, GBA_RTC_PIN_CS | 0 | GBA_RTC_PIN_SCK);
+  uint8_t res = rtc_read();
+  return res;
+}
+
+static void disableRTC(){
+  gba_write_byte(GBA_RTC_ADDR_IO_CONTROL, 0);
+}
+
+int CartridgeGBA::readRTC(void *buf, size_t bufSize){
+  int err = 0;
+  uint8_t *ptr = (uint8_t*)buf;
+  uint8_t status = enableRTC();
+
+  if (bufSize > 7) ptr[7] = status;
+
+  gba_write_byte(GBA_RTC_ADDR_IO_PINS, 0 | 0 | GBA_RTC_PIN_SCK);
+  gba_write_byte(GBA_RTC_ADDR_IO_PINDIRS, GBA_RTC_PIN_CS | GBA_RTC_PIN_SIO | GBA_RTC_PIN_SCK);
+  gba_write_byte(GBA_RTC_ADDR_IO_PINS, 0 | 0 | GBA_RTC_PIN_SCK);
+  gba_write_byte(GBA_RTC_ADDR_IO_PINS, GBA_RTC_PIN_CS | 0 | GBA_RTC_PIN_SCK);
+
+  rtc_write_cmd(RTC_CMD_READ(RTC_CMD_OP_REALTIME_DATA_ACCESS_1));
+  gba_write_byte(GBA_RTC_ADDR_IO_PINDIRS, GBA_RTC_PIN_CS | 0 | GBA_RTC_PIN_SCK);
+
+	for (int i=0; i<4 && i<bufSize; i++) ptr[i] = rtc_read();
+
+  gba_write_byte(GBA_RTC_ADDR_IO_PINS, GBA_RTC_PIN_CS | 0 | GBA_RTC_PIN_SCK);
+
+  for (int i=4; i<7 && i<bufSize; i++) ptr[i] = rtc_read();
+
+error:
+  disableRTC();
+  if (err){
+    return 0;
+  }
+  return 8;
+}
+
+int CartridgeGBA::writeRTC(const void *buf, size_t bufSize){
+  int err = 0;
+  uint8_t *ptr = (uint8_t*)buf;
+  int i = 0;
+
+  gba_write_byte(GBA_RTC_ADDR_IO_CONTROL, 1);
+  gba_write_byte(GBA_RTC_ADDR_IO_PINS, 0 | 0 | GBA_RTC_PIN_SCK);
+  gba_write_byte(GBA_RTC_ADDR_IO_PINS, GBA_RTC_PIN_CS | 0 | GBA_RTC_PIN_SCK);
+  gba_write_byte(GBA_RTC_ADDR_IO_PINDIRS, GBA_RTC_PIN_CS | GBA_RTC_PIN_SIO | GBA_RTC_PIN_SCK);
+
+  rtc_write_cmd(RTC_CMD_WRITE(RTC_CMD_OP_REALTIME_DATA_ACCESS_1));
+
+  for (i=0; i<4 && i<bufSize; i++) rtc_write_data(ptr[i]);
+
+  for (i=4; i<7 && i<bufSize; i++) rtc_write_data(ptr[i]);
+
+error:
+  disableRTC();
+  if (err){
+    return 0;
+  }
+  return i;
+}
+
+bool CartridgeGBA::hasRTC(){
+  bool ret = enableRTC() == 0x40;
+  disableRTC();
+  return true;
+}
+
+#pragma mark GBA specifics
 const char *CartridgeGBA::getStorageType(){
   if (_subtype == kGBACartridgeTypeNotChecked){
     getSubType();

@@ -204,3 +204,7 @@ error:
   }
   return didWrite;
 }
+
+bool CartridgeGBMBC3::hasRTC(){
+  return true;
+}
