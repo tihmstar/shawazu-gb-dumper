@@ -262,9 +262,41 @@ uint32_t CartridgeGBA::readRAM(void *buf, uint32_t size, uint32_t offset){
 }
 
 uint32_t CartridgeGBA::writeRAM(const void *buf, uint32_t size, uint32_t offset){
-  return gba_write(GBA_SAVEGAME_MAP_ADDRESS + offset, buf, size);
-}
+  int err = 0;
+  uint32_t ramSize = getRAMSize();
+  uint8_t locbuf[0x1000] = {};
+  uint32_t page = -1;
+  uint32_t totalDidWrite = 0;
+  const uint8_t *ptr = (const uint8_t*)buf;
 
+  while (size > 0){
+    uint32_t curPage = offset &~(sizeof(locbuf)-1);
+    uint32_t curPageOffset = offset & (sizeof(locbuf)-1);
+    uint32_t curWrite = sizeof(locbuf) - curPageOffset;
+    if (curPage != page){
+      cassure(readRAM(locbuf, sizeof(locbuf), page) == sizeof(locbuf));
+      page = curPage;
+    }
+    if (curWrite > size) curWrite = size;
+    bool needsWrite = false;
+    for (size_t i = 0; i < curWrite; i++){
+      if (locbuf[i+curPageOffset] != ptr[totalDidWrite+i]) {
+        needsWrite = true;
+        break;
+      }
+    }
+    if (needsWrite){
+      gba_write(GBA_SAVEGAME_MAP_ADDRESS + offset, &ptr[totalDidWrite], curWrite);
+    }
+    offset += curWrite;
+    size -= curWrite;
+    totalDidWrite += curWrite;
+  }
+  return totalDidWrite;
+
+error:
+  return totalDidWrite + gba_write(GBA_SAVEGAME_MAP_ADDRESS + offset, buf, size);
+}
 
 #pragma mark RTC
 static void rtc_write_cmd(uint8_t byte){
@@ -373,7 +405,7 @@ error:
 bool CartridgeGBA::hasRTC(){
   bool ret = enableRTC() == 0x40;
   disableRTC();
-  return true;
+  return ret;
 }
 
 #pragma mark GBA specifics

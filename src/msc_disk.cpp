@@ -212,15 +212,16 @@ void init_fakefatfs(void){
     {
       char romname[0x40] = {};
       snprintf(romname, sizeof(romname), "%s%s",title, isColor ? " (Color)" : "");
-      gEmuFat.addFile(romname,suffix, gCart->getROMSize(), cb_read_rom);
+      gEmuFat.addFileDynamic(romname,suffix, gCart->getROMSize(), 0, cb_read_rom);
       if (uint32_t ramsize = gCart->getRAMSize()){
         uint32_t savsize = ramsize;
-        if (gCart->getType() == kCartridgeTypeGB && gCart->getSubType() == kGBCartridgeTypeMBC3){
-          savsize += sizeof(struct RTCGBSave);
-        } else if (gCart->getType() == kCartridgeTypeGBA) {
-          savsize += sizeof(struct RTCGBASave);
+        if (gCart->hasRTC()){
+          if (gCart->getType() == kCartridgeTypeGB){
+            savsize += sizeof(struct RTCGBSave);
+          } else if (gCart->getType() == kCartridgeTypeGBA) {
+            savsize += sizeof(struct RTCGBASave);
+          }
         }
-
         gEmuFat.addFileDynamic(romname, "sav", savsize, 0, cb_read_ram, cb_write_ram);
       }
     }
@@ -241,7 +242,7 @@ void init_fakefatfs(void){
             // This photo is not used
             snprintf(filename, sizeof(filename), "DEL_IMG_%02d", p);
           }
-          gEmuFat.addFile(filename, "bmp", fileSize, cb_read_cam_image);
+          gEmuFat.addFileDynamic(filename, "bmp", fileSize, 0, cb_read_cam_image);
         }    
       }
     }
